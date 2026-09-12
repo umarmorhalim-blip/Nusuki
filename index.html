@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cyber-Voxel Nusantara — Rank Renderer</title>
+<style>
+  :root{
+    --neon:#39ff6a;
+    --bg:#020805;
+    --panel:rgba(4,20,10,.78);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:#cfeed8; overflow:hidden;
+    font-family:"Courier New",ui-monospace,monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  #scene{position:fixed; inset:0; display:block}
+  .hud{position:fixed; pointer-events:none; z-index:10}
+
+  #title{top:18px; left:20px}
+  #title h1{
+    margin:0; font-size:17px; letter-spacing:.22em; color:var(--neon);
+    text-shadow:0 0 12px rgba(57,255,106,.55);
+  }
+  #title p{margin:6px 0 0; font-size:11px; letter-spacing:.14em; color:#5f9d74}
+
+  #info{
+    top:18px; right:20px; width:236px; padding:13px 15px;
+    background:var(--panel); border:1px solid rgba(57,255,106,.35);
+    border-radius:4px; box-shadow:inset 0 0 18px rgba(57,255,106,.1);
+  }
+  #info .k{font-size:10px; letter-spacing:.2em; color:#4f8a63}
+  #info .rank{font-size:11px; letter-spacing:.18em; color:var(--neon); margin-top:2px}
+  #info .name{font-size:16px; letter-spacing:.08em; color:#eafff0; margin:4px 0 8px}
+  #info .desc{font-size:11px; line-height:1.6; color:#96c7a7}
+  #info .bar{margin-top:12px}
+  #info .bar span{display:block; font-size:10px; letter-spacing:.18em; color:#4f8a63; margin-bottom:5px}
+  #info .track{height:9px; background:#08190f; border:1px solid rgba(57,255,106,.3); display:flex; gap:2px; padding:2px}
+  #info .track i{flex:1; background:#0e2a18}
+  #info .track i.on{background:var(--neon); box-shadow:0 0 6px rgba(57,255,106,.8)}
+
+  #dock{
+    bottom:14px; left:0; right:0; display:flex; flex-direction:column;
+    align-items:center; gap:9px;
+  }
+  #bar{
+    display:flex; gap:7px; pointer-events:auto; flex-wrap:wrap; justify-content:center;
+    max-width:calc(100vw - 28px);
+  }
+  button{
+    font:inherit; font-size:11px; letter-spacing:.12em; color:#9fd9b3; cursor:pointer;
+    background:rgba(4,20,10,.85); border:1px solid rgba(57,255,106,.28);
+    padding:8px 11px; border-radius:3px; transition:.16s;
+  }
+  button:hover{color:#eafff0; border-color:var(--neon); box-shadow:0 0 12px rgba(57,255,106,.28)}
+  button.active{color:#031008; background:var(--neon); border-color:var(--neon)}
+
+  #hint{font-size:10px; letter-spacing:.16em; color:#437a56; text-align:center; padding:0 14px}
+
+  #loader{
+    position:fixed; inset:0; display:grid; place-items:center; z-index:50;
+    background:var(--bg); color:var(--neon); font-size:12px; letter-spacing:.28em;
+    transition:opacity .6s; text-align:center; padding:20px;
+  }
+  #loader.gone{opacity:0; pointer-events:none}
+  @media (max-width:760px){
+    #info{display:none}
+    #title h1{font-size:13px}
+    button{padding:7px 8px; font-size:10px}
+    #hint{display:none}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+
+<div class="hud" id="title">
+  <h1>CYBER-VOXEL NUSANTARA</h1>
+  <p>RANK PROGRESSION // ADAB ENGINE v1.0</p>
+</div>
+
+<div class="hud" id="info">
+  <div class="k">CURRENT STATUS</div>
+  <div class="rank" id="i-rank">OVERVIEW</div>
+  <div class="name" id="i-name">5 Pangkat Adab</div>
+  <div class="desc" id="i-desc">&nbsp;</div>
+  <div class="bar">
+    <span id="i-barlabel">NUR AMANAH</span>
+    <div class="track" id="i-track"></div>
+  </div>
+</div>
+
+<div class="hud" id="dock">
+  <div id="hint">DRAG = ORBIT &nbsp;•&nbsp; SCROLL = ZOOM &nbsp;•&nbsp; CLICK CHARACTER = FOCUS &nbsp;•&nbsp; 1-5 = JUMP &nbsp;•&nbsp; ESC = RESET</div>
+  <div id="bar">
+    <button id="btn-all" class="active">OVERVIEW</button>
+  </div>
+</div>
+
+<div id="loader">MEMUATKAN VOXEL&hellip;</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+/* =====================================================================
+   CYBER-VOXEL NUSANTARA — voxel character renderer  (Three.js r128)
+
+   Five ranked characters, each assembled from BoxGeometry voxels in
+   four passes: bare body -> clothing shell (slightly larger boxes) ->
+   headwear -> neon circuitry. Emissive materials plus additive glow
+   sprites stand in for post-process bloom, so the whole scene stays
+   at a few thousand triangles with no shadow maps.
+   ===================================================================== */
+
+const NEON      = 0x39ff6a;
+const NEON_SOFT = 0x7dffa6;
+const BG        = 0x020805;
+
+/* ---------------------------------------------------------------------
+   1. Body metrics
+   One unit ~= one voxel; a character stands ~34 units tall. Every y is
+   absolute (0 = ground) so parts can be authored independently and then
+   re-parented onto animated pivots.
+   ------------------------------------------------------------------ */
+const P = {
+  footW:3.2, footH:1.5, footD:4.6, footZ:0.6, footY:0.75,
+  shinW:3.0, shinH:6.0, shinD:3.0, shinY:4.5,
+  thighW:3.4, thighH:7.0, thighD:3.4, thighY:11.0,
+  pelvisW:8.0, pelvisH:3.0, pelvisD:4.2, pelvisY:16.0,
+  torsoW:8.0, torsoH:8.5, torsoD:4.2, torsoY:21.75,
+  neckW:3.0, neckH:1.4, neckD:3.0, neckY:26.5,
+  headW:7.0, headH:7.0, headD:7.0, headY:30.9,
+  uArmW:2.6, uArmH:6.0, uArmD:2.8, uArmY:23.0,
+  lArmW:2.4, lArmH:5.5, lArmD:2.6, lArmY:17.25,
+  handW:2.8, handH:2.2, handD:3.0, handY:13.4,
+  legX:2.1, armX:5.9, shoulderY:26.0
+};
+const PAD     = 0.5;    // how far clothing sits outside the body
+const SPACING = 20;     // distance between characters
+
+/* ---------------------------------------------------------------------
+   2. Character definitions
+   circuit: 0 none, 1 subtle (rank 4), 2 full (rank 5)
+   ------------------------------------------------------------------ */
+const CHARS = [
+  {
+    rank:1, short:'Dagang', name:'Anak Dagang', title:'Pedagang Muda', amanah:24,
+    desc:'Baju melayu kain kasar, sarung putih. Belum ada nur — adab masih di peringkat niat.',
+    skin:0xd8996a, hair:0x191310,
+    shirt:0x7d4526, shirtTrim:0xa26034,
+    sarung:0xe8e4d8, sarungLong:true, pants:null, shoe:0xdcae74,
+    headwear:'none', prop:null, pack:false, circuit:0, glow:0
+  },
+  {
+    rank:2, short:'Perantau', name:'Perantau', title:'Pengembara Ilmu', amanah:45,
+    desc:'Baju biru perantau, seluar gelap, beg sandar penuh catatan. Mula mengumpul ilmu di luar kampung.',
+    skin:0xd8996a, hair:0x191310,
+    shirt:0x1f79a0, shirtTrim:0x46b6d4,
+    sarung:0x232f47, sarungLong:false, pants:0x1c2539, shoe:0xdcae74,
+    headwear:'none', prop:null, pack:true, circuit:0, glow:0
+  },
+  {
+    rank:3, short:'Pendekar', name:'Pendekar Muda', title:'Murid Gelanggang', amanah:63,
+    desc:'Baju melayu hitam, songkok, samping berpetak. Memegang kayu latihan — silat bermula dengan hormat.',
+    skin:0xd8996a, hair:0x191310,
+    shirt:0x16191b, shirtTrim:0x2c3b32,
+    sarung:'check', sarungLong:false, pants:0x111416, shoe:0xdcae74,
+    headwear:'songkok', prop:'stick', pack:false, circuit:0, glow:0
+  },
+  {
+    rank:4, short:'Pahlawan', name:'Pahlawan Siber', title:'Panglima Siber', amanah:84,
+    desc:'Litar neon halus menyala pada baju. Tanijak hitam berdenyut perlahan, keris siber di tangan.',
+    skin:0xd8996a, hair:0x191310,
+    shirt:0x0e1312, shirtTrim:0x18221d,
+    sarung:0x0c100f, sarungLong:false, pants:0x0a0d0c, shoe:0x0c100e,
+    headwear:'tanijak', prop:'keris', pack:false, circuit:1, glow:0.5
+  },
+  {
+    rank:5, short:'Adiguru', name:'Adiguru', title:'Guru Silat • Al-Amin', amanah:98,
+    desc:'Litar nur penuh menyala di seluruh tubuh. Tanijak Dendam Tak Sudah bercahaya, keris nur di tangan.',
+    skin:0xd8996a, hair:0x191310,
+    shirt:0x080c0a, shirtTrim:0x0e1712,
+    sarung:0x080c0a, sarungLong:false, pants:0x060908, shoe:0x080b09,
+    headwear:'tanijak-elite', prop:'keris-elite', pack:false, circuit:2, glow:1
+  }
+];
+
+/* emissive strength per circuit level: [base, pulse amount] */
+const EMIT = {
+  1: {trace:0.26, belt:0.24, blade:0.58, crown:0.30, amt:0.16},
+  2: {trace:0.85, belt:0.78, blade:1.10, crown:0.95, amt:0.32}
+};
+
+/* ---------------------------------------------------------------------
+   3. Renderer / scene / camera
+   ------------------------------------------------------------------ */
+const canvas   = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(BG, 1);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(BG);
+scene.fog = new THREE.Fog(BG, 120, 340);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.5, 900);
+const HOME = {pos:new THREE.Vector3(6, 29, 88), tgt:new THREE.Vector3(6, 19, 0)};
+camera.position.copy(HOME.pos);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.copy(HOME.tgt);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 18;
+controls.maxDistance = 220;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.autoRotateSpeed = 1.1;
+
+/* ---------------------------------------------------------------------
+   4. Shared helpers: textures, materials, boxes, sprites
+   ------------------------------------------------------------------ */
+
+// Faint per-pixel grain so flat box faces still read as voxel fabric.
+function grainTexture(){
+  const s = 32, c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0,0,s,s);
+  for (let i=0;i<s*s*0.35;i++){
+    const v = 228 + Math.floor(Math.random()*28);
+    g.fillStyle = 'rgb('+v+','+v+','+v+')';
+    g.fillRect(Math.floor(Math.random()*s), Math.floor(Math.random()*s), 1, 1);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = t.minFilter = THREE.NearestFilter;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(2,2);
+  return t;
+}
+
+// Woven check for the rank-3 samping.
+function checkTexture(){
+  const s = 48, c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d');
+  g.fillStyle = '#f4f2ea'; g.fillRect(0,0,s,s);
+  g.fillStyle = '#1e1f20';
+  for (let y=0;y<s;y+=8) for (let x=0;x<s;x+=8)
+    if (((x/8)+(y/8)) % 2 === 0) g.fillRect(x,y,8,8);
+  g.fillStyle = 'rgba(0,0,0,.28)';
+  for (let x=0;x<s;x+=8){ g.fillRect(x,0,1,s); g.fillRect(0,x,s,1); }
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = t.minFilter = THREE.NearestFilter;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(2,2);
+  return t;
+}
+
+// Radial falloff sprite — a cheap stand-in for post-process bloom.
+function glowTexture(){
+  const s = 128, c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+  grd.addColorStop(0.00, 'rgba(170,255,200,.9)');
+  grd.addColorStop(0.25, 'rgba(57,255,106,.4)');
+  grd.addColorStop(0.60, 'rgba(57,255,106,.1)');
+  grd.addColorStop(1.00, 'rgba(57,255,106,0)');
+  g.fillStyle = grd; g.fillRect(0,0,s,s);
+  return new THREE.CanvasTexture(c);
+}
+
+const TEX = {grain:grainTexture(), check:checkTexture(), glow:glowTexture()};
+const BOX = new THREE.BoxGeometry(1,1,1);   // one geometry, scaled per part
+
+function mat(color, opts){
+  opts = opts || {};
+  return new THREE.MeshLambertMaterial({
+    color: color,
+    map: opts.map === null ? null : (opts.map || TEX.grain),
+    emissive: opts.emissive !== undefined ? opts.emissive : 0x000000,
+    emissiveIntensity: opts.ei !== undefined ? opts.ei : 1
+  });
+}
+
+// A glowing trace material, registered so it can breathe in the loop.
+function traceMat(c, level, kind){
+  const e = EMIT[level];
+  const base = e[kind];
+  const m = mat(level === 2 ? 0x0a2c18 : 0x091a11, {emissive:NEON, ei:base, map:null});
+  c.pulse.push({m:m, base:base, amt:e.amt});
+  return m;
+}
+
+/**
+ * Add one voxel box. o: w,h,d dimensions, x,y,z centre, material|color,
+ * rx,ry,rz optional rotation.
+ */
+function box(parent, o){
+  const m = new THREE.Mesh(BOX, o.material || mat(o.color, o));
+  m.scale.set(o.w, o.h, o.d);
+  m.position.set(o.x || 0, o.y || 0, o.z || 0);
+  if (o.rx) m.rotation.x = o.rx;
+  if (o.ry) m.rotation.y = o.ry;
+  if (o.rz) m.rotation.z = o.rz;
+  parent.add(m);
+  return m;
+}
+
+function glowSprite(parent, o){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: TEX.glow, color: o.color || NEON, transparent:true,
+    blending: THREE.AdditiveBlending, depthWrite:false,
+    opacity: o.opacity !== undefined ? o.opacity : 0.6
+  }));
+  s.position.set(o.x||0, o.y||0, o.z||0);
+  s.scale.set(o.size, o.sizeY || o.size, 1);
+  parent.add(s);
+  return s;
+}
+
+// Floor label: "RANK n" over the character name and specialisation.
+function labelSprite(rank, name, title){
+  const w = 512, h = 176, c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+
+  g.fillStyle = 'rgba(3,16,8,.62)';
+  g.fillRect(6, 26, w-12, h-52);
+  g.strokeStyle = 'rgba(57,255,106,.6)';
+  g.lineWidth = 3;
+  g.strokeRect(6, 26, w-12, h-52);
+
+  g.textAlign = 'center';
+  g.fillStyle = '#7dffa6';
+  g.font = 'bold 32px "Courier New", monospace';
+  g.fillText('RANK ' + rank, w/2, 72);
+
+  g.fillStyle = '#eafff0';
+  g.font = 'bold 42px "Courier New", monospace';
+  g.fillText(name.toUpperCase(), w/2, 119);
+
+  g.fillStyle = '#79bd8f';
+  g.font = 'bold 20px "Courier New", monospace';
+  g.fillText(title.toUpperCase(), w/2, 146);
+
+  const t = new THREE.CanvasTexture(c);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({map:t, transparent:true, depthWrite:false}));
+  s.scale.set(13.5, 4.6, 1);
+  return s;
+}
+
+/* ---------------------------------------------------------------------
+   5. Neon circuitry
+   Traces are authored in face-local 2D (u across, v up) then extruded as
+   thin boxes just outside the clothing surface, so they hug the voxels.
+   ------------------------------------------------------------------ */
+let seed = 20260912;
+function rnd(){ seed = (seed*1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
+
+const FACES = {
+  front: {n: 1, u:'x', k:'d'},
+  back:  {n:-1, u:'x', k:'d'},
+  right: {n: 1, u:'z', k:'w'},
+  left:  {n:-1, u:'z', k:'w'}
+};
+
+/**
+ * Stitch circuit traces onto the surface of a box region.
+ * @param b   {w,h,d,x,y,z} of the host box (the clothing layer)
+ * @param cfg {mat, count, thick, faces}
+ */
+function addCircuits(parent, b, cfg){
+  const thick = cfg.thick || 0.24;
+  const lift  = 0.06;
+  const faces = cfg.faces || ['front','back','left','right'];
+
+  faces.forEach(function(fname){
+    const f      = FACES[fname];
+    const half   = (f.k === 'd' ? b.d : b.w) / 2 + lift;
+    const alongX = f.u === 'x';
+    const uSpan  = alongX ? b.w : b.d;
+    const vSpan  = b.h;
+
+    // Place one trace box, given face-local offsets and lengths.
+    function put(u, v, uLen, vLen){
+      const o = {material: cfg.mat, h: vLen, x: b.x, y: b.y + v, z: b.z};
+      if (alongX){ o.w = uLen; o.d = thick * 0.5; o.x += u; o.z = b.z + f.n * half; }
+      else       { o.d = uLen; o.w = thick * 0.5; o.z += u; o.x = b.x + f.n * half; }
+      box(parent, o);
+    }
+
+    for (let i=0; i<cfg.count; i++){
+      // Vertical spine, a lateral jog, a second spine, then node pads.
+      let u = (rnd() - 0.5) * (uSpan - thick*4);
+      let v = -vSpan/2 + thick;
+      put(u, v + thick*1.1, thick*2.2, thick*2.2);        // root pad
+
+      const h1 = vSpan * (0.22 + rnd()*0.3);
+      put(u, v + h1/2, thick, h1);
+      v += h1;
+
+      const dir = rnd() < 0.5 ? -1 : 1;
+      const jog = uSpan * (0.13 + rnd()*0.2) * dir;
+      put(u + jog/2, v, Math.abs(jog) + thick, thick);
+      u += jog;
+
+      const h2 = vSpan * (0.14 + rnd()*0.26);
+      put(u, v + h2/2, thick, h2);
+      v += h2;
+
+      put(u, v, thick*2.4, thick*2.4);                     // end node
+    }
+  });
+}
+
+/* ---------------------------------------------------------------------
+   6. Headwear
+   ------------------------------------------------------------------ */
+function buildSongkok(parent){
+  const m = mat(0x13150f);
+  box(parent, {w:P.headW+0.5, h:3.4, d:P.headD+0.5, y:P.headY + P.headH/2 + 1.5, material:m});
+  box(parent, {w:P.headW+0.15, h:0.5, d:P.headD+0.15, y:P.headY + P.headH/2 + 3.4, material:m});
+  box(parent, {w:P.headW+0.6, h:0.4, d:P.headD+0.6, y:P.headY + P.headH/2 + 0.2, material:mat(0x202418)});
+}
+
+/**
+ * Tanijak / tengkolok: a folded cloth crown. A base band plus flat
+ * plates fanned upward-left at rising angles, echoing the real fold,
+ * finished with the upswept "Dendam Tak Sudah" peak.
+ */
+function buildTanijak(parent, c, elite){
+  const lvl   = elite ? 2 : 1;
+  const cloth = mat(elite ? 0x0a1310 : 0x0d1311);
+  const trace = traceMat(c, lvl, 'crown');
+  const base  = P.headY + P.headH/2;
+
+  // crown band with embroidery lines
+  box(parent, {w:P.headW+0.8, h:2.4, d:P.headD+0.8, y:base + 1.1, material:cloth});
+  box(parent, {w:P.headW+0.9, h:0.30, d:P.headD+0.9, y:base + 2.15, material:trace});
+  box(parent, {w:P.headW+0.9, h:0.26, d:P.headD+0.9, y:base + 0.35, material:trace});
+
+  // folded wrap, fanning up and to the left
+  const folds = elite ? 4 : 3;
+  for (let i=0;i<folds;i++){
+    const w  = (P.headW + 0.4) - i*0.85;
+    const d  = (P.headD + 0.4) - i*0.8;
+    const y  = base + 2.55 + i*0.82;
+    const x  = -0.25 - i*0.38;
+    const rz = 0.16 + i*0.11;
+    box(parent, {w:w, h:0.85, d:d, x:x, y:y, rz:rz, rx:-0.06, material:cloth});
+    box(parent, {w:w*0.94, h:0.16, d:d*0.5, x:x, y:y + 0.52, z:d*0.2, rz:rz, rx:-0.06, material:trace});
+  }
+
+  // the upswept peak
+  const peakY = base + 2.55 + folds*0.82 + 1.7;
+  box(parent, {w:2.8, h:4.8, d:1.7, x:-1.9, y:peakY, rz:0.52, rx:-0.08, material:cloth});
+  box(parent, {w:1.2, h:4.4, d:0.5, x:-2.3, y:peakY + 0.2, z:0.75, rz:0.52, rx:-0.08, material:trace});
+  box(parent, {w:1.9, h:0.9, d:1.5, x:-3.1, y:peakY + 2.3, rz:0.88, material:cloth});
+
+  if (elite){
+    // Floating crystalline node above the crown.
+    const crystal = mat(0x0d3a1f, {emissive:NEON, ei:1.05, map:null});
+    c.pulse.push({m:crystal, base:1.05, amt:0.42});
+    const cg = new THREE.Group();
+    cg.position.set(0, base + 7.9, 0);
+    box(cg, {w:2.3, h:1.3, d:2.3, ry:0.78, material:crystal});
+    box(cg, {w:1.3, h:1.5, d:1.3, y:1.1, ry:0.4, material:crystal});
+    box(cg, {w:0.55,h:1.1, d:0.55,y:2.1, material:crystal});
+    parent.add(cg);
+    c.crystal = cg;
+    c.glows.push(glowSprite(parent, {y:base + 8.9, size:12, opacity:0.5}));
+    c.glows.push(glowSprite(parent, {y:base + 3.4, size:15, opacity:0.26}));
+  } else {
+    c.glows.push(glowSprite(parent, {y:base + 3.6, size:9, opacity:0.2}));
+  }
+}
+
+/* ---------------------------------------------------------------------
+   7. Props
+   ------------------------------------------------------------------ */
+function buildStick(parent){
+  const g = new THREE.Group();
+  box(g, {w:1.0, h:9.2, d:1.0, color:0x8a5f39});
+  box(g, {w:1.25, h:1.0, d:1.25, y:-4.3, color:0x64432a});
+  box(g, {w:1.15, h:0.5, d:1.15, y: 3.6, color:0x9c7248});
+  g.rotation.z = 0.14;
+  g.rotation.x = -0.10;
+  parent.add(g);
+  return g;
+}
+
+// Keris: wavy blade built from overlapping tapered segments (lok).
+function buildKeris(parent, c, elite){
+  const g     = new THREE.Group();
+  const lvl   = elite ? 2 : 1;
+  const hilt  = mat(elite ? 0x123021 : 0x1b1f1d);
+  const blade = traceMat(c, lvl, 'blade');
+
+  box(g, {w:1.4, h:3.2, d:1.4, y:-1.9, rz:0.18, material:hilt});      // hulu
+  box(g, {w:1.7, h:1.0, d:1.7, y:-3.7, material:hilt});
+  box(g, {w:3.8, h:0.9, d:2.0, y: 0.4, material: elite ? blade : hilt}); // ganja
+
+  const segs = 8;
+  for (let i=0;i<segs;i++){
+    const t = i/(segs-1);
+    box(g, {
+      w: 1.6 - t*1.15, h:1.45, d: 0.62 - t*0.24,
+      x: Math.sin(i*0.85) * 0.26,
+      y: 1.5 + i*1.25,
+      rz: Math.sin(i*0.85) * 0.07,
+      material: blade
+    });
+  }
+  box(g, {w:0.42, h:1.5, d:0.32, y:1.5 + segs*1.25, material:blade});  // tip
+
+  c.glows.push(glowSprite(g, {y:6.0, size: elite ? 8 : 4.5, sizeY: elite ? 17 : 12,
+                              opacity: elite ? 0.48 : 0.18}));
+  g.rotation.z = -0.22;
+  g.rotation.x = -0.12;
+  parent.add(g);
+  return g;
+}
+
+function buildPack(parent){
+  const cloth = mat(0x1f556a);
+  const strap = mat(0x153542);
+  const zBack = -(P.torsoD/2 + 1.8);
+  box(parent, {w:6.2, h:7.2, d:3.0, y:P.torsoY + 0.2, z:zBack, material:cloth});
+  box(parent, {w:6.4, h:1.6, d:3.2, y:P.torsoY + 3.4, z:zBack, material:strap});
+  box(parent, {w:4.2, h:2.4, d:0.9, y:P.torsoY - 1.4, z:zBack - 1.6, material:strap});
+  box(parent, {w:1.2, h:3.2, d:0.7, y:P.torsoY + 4.8, z:zBack - 0.4, material:mat(0xd8c48a)});
+  [-1,1].forEach(function(s){
+    box(parent, {w:0.9, h:8.6, d:0.8, x:s*2.6, y:P.torsoY, z:P.torsoD/2 + PAD/2 + 0.3, material:strap});
+  });
+}
+
+/* ---------------------------------------------------------------------
+   8. Character assembly
+   ------------------------------------------------------------------ */
+function buildCharacter(cfg){
+  const c = {
+    cfg:  cfg,
+    slot: new THREE.Group(),   // fixed frame: pad, ring, label, lamp
+    body: new THREE.Group(),   // animated: bobs and sways
+    pulse: [],                 // emissive materials that breathe
+    glows: []                  // additive sprites that breathe
+  };
+  c.slot.add(c.body);
+
+  const lvl   = cfg.circuit;
+  const skin  = mat(cfg.skin);
+  const hair  = mat(cfg.hair);
+  const shirt = mat(cfg.shirt);
+  const trim  = mat(cfg.shirtTrim);
+  const shoe  = mat(cfg.shoe);
+  const pants = mat(cfg.pants !== null && cfg.pants !== undefined ? cfg.pants : 0x111416);
+  const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEX.check}) : mat(cfg.sarung);
+  const circuits  = lvl ? traceMat(c, lvl, 'trace') : null;
+
+  /* ---- legs & feet (mirrored) ---- */
+  [-1, 1].forEach(function(s){
+    const x = s * P.legX;
+    box(c.body, {w:P.footW, h:P.footH, d:P.footD, x:x, y:P.footY, z:P.footZ, material:shoe});
+    box(c.body, {w:P.shinW, h:P.shinH, d:P.shinD, x:x, y:P.shinY, material:skin});
+    box(c.body, {w:P.thighW, h:P.thighH, d:P.thighD, x:x, y:P.thighY, material:skin});
+    if (cfg.pants){   // trousers for the ranks that wear them
+      box(c.body, {w:P.shinW+PAD, h:P.shinH+0.2, d:P.shinD+PAD, x:x, y:P.shinY+0.3, material:pants});
+      box(c.body, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:x, y:P.thighY, material:pants});
+    }
+  });
+
+  /* ---- core ---- */
+  box(c.body, {w:P.pelvisW, h:P.pelvisH, d:P.pelvisD, y:P.pelvisY, material:skin});
+  box(c.body, {w:P.torsoW,  h:P.torsoH,  d:P.torsoD,  y:P.torsoY,  material:skin});
+  box(c.body, {w:P.neckW,   h:P.neckH,   d:P.neckD,   y:P.neckY,   material:skin});
+
+  /* ---- head (own pivot so it can glance around) ---- */
+  const head = new THREE.Group();
+  head.position.y = P.headY;
+  c.body.add(head);
+  c.head = head;
+
+  const dark  = mat(0x140f0d, {map:null});
+  const white = mat(0xf4f1e8, {map:null});
+  box(head, {w:P.headW, h:P.headH, d:P.headD, material:skin});
+  [-1,1].forEach(function(s){
+    box(head, {w:1.3, h:1.1, d:0.15, x:s*1.65, y:0.55, z:P.headD/2 + 0.08, material:white});
+    box(head, {w:0.6, h:0.8, d:0.2,  x:s*1.75, y:0.5,  z:P.headD/2 + 0.12, material:dark});
+    box(head, {w:1.7, h:0.35,d:0.15, x:s*1.65, y:1.5,  z:P.headD/2 + 0.08, material:hair});
+  });
+  box(head, {w:P.headW+0.15, h:P.headH*0.82, d:1.2, y:0.4, z:-(P.headD/2 + 0.3), material:hair});
+  if (cfg.headwear === 'none'){
+    box(head, {w:P.headW+0.3, h:1.7, d:P.headD+0.3, y:P.headH/2 + 0.4, material:hair});
+    box(head, {w:P.headW+0.3, h:1.2, d:1.0, y:P.headH/2 - 0.7, z:P.headD/2 + 0.15, material:hair});
+    [-1,1].forEach(function(s){
+      box(head, {w:0.9, h:2.4, d:P.headD+0.2, x:s*(P.headW/2 + 0.2), y:P.headH/2 - 1.6, material:hair});
+    });
+  } else {
+    box(head, {w:P.headW+0.2, h:0.9, d:P.headD+0.2, y:P.headH/2 - 0.25, material:hair});
+  }
+  if (cfg.rank === 5){
+    // Adiguru's beard: a band wrapping the jaw, plus moustache and tuft.
+    const bd = mat(0x1d1713, {map:null});
+    box(head, {w:P.headW+0.18, h:2.4, d:P.headD+0.18, y:-2.25, material:bd});
+    box(head, {w:4.0, h:0.7, d:0.25, y:-1.15, z:P.headD/2 + 0.16, material:bd});
+    box(head, {w:2.2, h:0.45,d:0.22, y:-1.85, z:P.headD/2 + 0.2,  material:mat(0x6f4536, {map:null})});
+    box(head, {w:2.8, h:1.7, d:2.8, y:-4.2, material:bd});
+  } else {
+    box(head, {w:1.9, h:0.3, d:0.15, y:-1.6, z:P.headD/2 + 0.08, material:mat(0x9b6450, {map:null})});
+  }
+
+  /* ---- arms: one pivot group per side, hinged at the shoulder ---- */
+  c.arms = [];
+  [-1, 1].forEach(function(s){
+    const arm = new THREE.Group();
+    arm.position.set(s * P.armX, P.shoulderY, 0);
+    c.body.add(arm);
+    c.arms.push(arm);
+    const rel = function(y){ return y - P.shoulderY; };
+
+    box(arm, {w:P.uArmW, h:P.uArmH, d:P.uArmD, y:rel(P.uArmY), material:skin});
+    box(arm, {w:P.lArmW, h:P.lArmH, d:P.lArmD, y:rel(P.lArmY), material:skin});
+    box(arm, {w:P.handW, h:P.handH, d:P.handD, y:rel(P.handY), material:skin});
+
+    // sleeve of the baju melayu
+    box(arm, {w:P.uArmW+PAD, h:P.uArmH+0.3, d:P.uArmD+PAD, y:rel(P.uArmY)-0.1, material:shirt});
+    box(arm, {w:P.lArmW+PAD, h:P.lArmH,     d:P.lArmD+PAD, y:rel(P.lArmY),     material:shirt});
+    box(arm, {w:P.lArmW+PAD+0.2, h:0.5, d:P.lArmD+PAD+0.2, y:rel(P.lArmY) - P.lArmH/2, material:trim});
+
+    if (lvl){
+      box(arm, {w:P.handW+0.25, h:P.handH+0.25, d:P.handD+0.25, y:rel(P.handY), material:mat(0x0b100d)});
+      box(arm, {w:P.lArmW+PAD+0.3, h:0.9, d:P.lArmD+PAD+0.3, y:rel(P.lArmY)+1.5, material:circuits});
+      addCircuits(arm, {w:P.uArmW+PAD, h:P.uArmH, d:P.uArmD+PAD, x:0, y:rel(P.uArmY), z:0},
+                  {mat:circuits, count: lvl === 2 ? 2 : 1, thick:0.2,
+                   faces: lvl === 2 ? ['front','right','left'] : ['front']});
+      addCircuits(arm, {w:P.lArmW+PAD, h:P.lArmH, d:P.lArmD+PAD, x:0, y:rel(P.lArmY), z:0},
+                  {mat:circuits, count:1, thick:0.2, faces:['front']});
+    }
+  });
+
+  /* ---- baju melayu (torso layer) ---- */
+  box(c.body, {w:P.torsoW+PAD, h:P.torsoH+0.4, d:P.torsoD+PAD, y:P.torsoY-0.1, material:shirt});
+  box(c.body, {w:P.torsoW+PAD+0.2, h:1.0, d:P.torsoD+PAD+0.2, y:P.torsoY - P.torsoH/2 - 0.2, material:trim});
+  box(c.body, {w:4.4, h:1.2, d:P.neckD+1.6, y:P.torsoY + P.torsoH/2 + 0.4, material:trim});        // collar
+  box(c.body, {w:1.0, h:P.torsoH*0.7, d:0.35, y:P.torsoY + 0.6, z:P.torsoD/2 + PAD/2 + 0.12, material:trim}); // placket
+  [-1,1].forEach(function(s){   // pesak side panels + shoulder seam
+    box(c.body, {w:0.45, h:P.torsoH+0.4, d:P.torsoD+PAD+0.05, x:s*(P.torsoW+PAD)/2, y:P.torsoY-0.1, material:trim});
+    box(c.body, {w:1.3, h:0.6, d:P.torsoD+PAD, x:s*(P.torsoW/2 + 0.9), y:P.torsoY + P.torsoH/2, material:trim});
+  });
+
+  /* ---- sarung / samping over the hips ---- */
+  const sarungH = cfg.sarungLong ? 11.0 : 6.2;
+  const sarungY = cfg.sarungLong ? 13.2 : 15.4;
+  box(c.body, {w:P.pelvisW+PAD+0.6, h:sarungH, d:P.pelvisD+PAD+0.6, y:sarungY, material:sarungMat});
+  const beltMat = lvl ? traceMat(c, lvl, 'belt') : trim;
+  box(c.body, {w:P.pelvisW+PAD+1.0, h:1.0, d:P.pelvisD+PAD+1.0, y:sarungY + sarungH/2 - 0.3, material:beltMat});
+  if (lvl){
+    box(c.body, {w:2.0, h:1.6, d:0.6, y:sarungY + sarungH/2 - 0.3,
+                 z:P.pelvisD/2 + PAD/2 + 0.55, material:beltMat});
+  }
+
+  /* ---- circuitry across torso and legs ---- */
+  if (lvl){
+    addCircuits(c.body, {w:P.torsoW+PAD, h:P.torsoH+0.4, d:P.torsoD+PAD, x:0, y:P.torsoY-0.1, z:0},
+                {mat:circuits, count: lvl === 2 ? 3 : 2, thick:0.24});
+    [-1,1].forEach(function(s){
+      addCircuits(c.body, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:s*P.legX, y:P.thighY, z:0},
+                  {mat:circuits, count: lvl === 2 ? 2 : 1, thick:0.2,
+                   faces: s > 0 ? ['front','right'] : ['front','left']});
+      addCircuits(c.body, {w:P.shinW+PAD, h:P.shinH, d:P.shinD+PAD, x:s*P.legX, y:P.shinY+0.3, z:0},
+                  {mat:circuits, count:1, thick:0.2, faces:['front']});
+      // boots
+      box(c.body, {w:P.footW+0.6, h:P.footH+0.5, d:P.footD+0.5, x:s*P.legX, y:P.footY+0.2, z:P.footZ,
+                   material:mat(0x0a0e0c)});
+      box(c.body, {w:P.footW+0.5, h:0.45, d:P.footD+0.4, x:s*P.legX, y:P.footY+0.95, z:P.footZ, material:circuits});
+      box(c.body, {w:P.shinW+PAD+0.3, h:0.8, d:P.shinD+PAD+0.3, x:s*P.legX, y:P.shinY-1.7, material:circuits});
+    });
+    // chest core
+    box(c.body, {w:1.8, h:1.8, d:0.5, y:P.torsoY + 2.0, z:P.torsoD/2 + PAD/2 + 0.15, material:circuits});
+    if (lvl === 2){
+      c.glows.push(glowSprite(c.body, {y:P.torsoY, size:22, opacity:0.26}));
+      c.glows.push(glowSprite(c.body, {y:8,        size:18, opacity:0.16}));
+    } else {
+      c.glows.push(glowSprite(c.body, {y:P.torsoY, size:14, opacity:0.11}));
+    }
+  }
+
+  /* ---- headwear ---- */
+  if      (cfg.headwear === 'songkok')       buildSongkok(c.body);
+  else if (cfg.headwear === 'tanijak')       buildTanijak(c.body, c, false);
+  else if (cfg.headwear === 'tanijak-elite') buildTanijak(c.body, c, true);
+
+  /* ---- pack & props (props ride the right arm so they sway with it) ---- */
+  if (cfg.pack) buildPack(c.body);
+  const rightArm = c.arms[1];
+  if (cfg.prop === 'stick'){
+    buildStick(rightArm).position.set(1.4, P.handY - P.shoulderY - 0.4, 2.2);
+  } else if (cfg.prop === 'keris' || cfg.prop === 'keris-elite'){
+    buildKeris(rightArm, c, cfg.prop === 'keris-elite')
+      .position.set(2.0, P.handY - P.shoulderY + 0.3, 2.4);
+  }
+
+  /* ---- ground pad, ring and label (not bobbed) ---- */
+  const pad = new THREE.Mesh(
+    new THREE.CircleGeometry(7.6, 32),
+    new THREE.MeshBasicMaterial({color: cfg.glow ? NEON : 0x1c6e38, transparent:true,
+                                 opacity: cfg.glow ? 0.13 : 0.07, depthWrite:false})
+  );
+  pad.rotation.x = -Math.PI/2;
+  pad.position.y = 0.04;
+  c.slot.add(pad);
+
+  c.ringBase = 0.16 + 0.3*cfg.glow;
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(7.4, 8.0, 40),
+    new THREE.MeshBasicMaterial({color:NEON, transparent:true, opacity:c.ringBase, depthWrite:false})
+  );
+  ring.rotation.x = -Math.PI/2;
+  ring.position.y = 0.05;
+  c.slot.add(ring);
+  c.ring = ring;
+
+  c.label = labelSprite(cfg.rank, cfg.name, cfg.title);
+  c.label.position.set(0, 2.2, 9.0);
+  c.slot.add(c.label);
+
+  /* ---- invisible click target ---- */
+  const picker = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({
+    transparent:true, opacity:0, depthWrite:false
+  }));
+  picker.scale.set(16, 44, 16);
+  picker.position.y = 21;
+  picker.userData.char = c;
+  c.slot.add(picker);
+  c.picker = picker;
+
+  /* ---- point light above the character ---- */
+  const lamp = new THREE.PointLight(0xb6ffcf, 0.8 + cfg.glow*0.45, 78, 2);
+  lamp.position.set(0, 46, 12);
+  c.slot.add(lamp);
+  c.lamp = lamp;
+  c.lampBase = lamp.intensity;
+
+  return c;
+}
+
+/* ---------------------------------------------------------------------
+   9. Populate the scene
+   ------------------------------------------------------------------ */
+const chars = [];
+const pickers = [];
+CHARS.forEach(function(cfg, i){
+  const c = buildCharacter(cfg);
+  c.index = i;
+  c.x = (i - (CHARS.length-1)/2) * SPACING;
+  c.slot.position.x = c.x;
+  c.phase = i * 0.8;
+  scene.add(c.slot);
+  chars.push(c);
+  pickers.push(c.picker);
+});
+
+/* lights: a neutral key so fabric colours read, plus a green rim/wash */
+scene.add(new THREE.AmbientLight(0x33403a, 0.85));
+scene.add(new THREE.HemisphereLight(0x4c7a60, 0x05130b, 0.5));
+const key = new THREE.DirectionalLight(0xfff4e4, 0.85);
+key.position.set(-38, 52, 66);
+scene.add(key);
+const rim = new THREE.DirectionalLight(NEON, 0.2);
+rim.position.set(44, 20, -55);
+scene.add(rim);
+const side = new THREE.DirectionalLight(0xbfe8ff, 0.22);
+side.position.set(60, 24, 18);
+scene.add(side);
+
+/* ground */
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(600, 600),
+  new THREE.MeshLambertMaterial({color:0x04170b})
+);
+floor.rotation.x = -Math.PI/2;
+scene.add(floor);
+
+const grid = new THREE.GridHelper(400, 64, 0x2f9c55, 0x0e4021);
+grid.material.transparent = true;
+grid.material.opacity = 0.28;
+grid.position.y = 0.02;
+scene.add(grid);
+
+/* a slow drift of neon motes for depth */
+const MOTES   = 420;
+const moteGeo = new THREE.BufferGeometry();
+const mp = new Float32Array(MOTES*3);
+for (let i=0;i<MOTES;i++){
+  mp[i*3]   = (Math.random()-0.5)*250;
+  mp[i*3+1] = Math.random()*85;
+  mp[i*3+2] = (Math.random()-0.5)*170;
+}
+moteGeo.setAttribute('position', new THREE.BufferAttribute(mp, 3));
+scene.add(new THREE.Points(moteGeo, new THREE.PointsMaterial({
+  color:NEON_SOFT, size:0.45, transparent:true, opacity:0.5, depthWrite:false,
+  blending:THREE.AdditiveBlending
+})));
+
+/* ---------------------------------------------------------------------
+   10. Focus / camera transitions
+   ------------------------------------------------------------------ */
+let focused = null;
+let moving  = false;
+const desired = {pos:HOME.pos.clone(), tgt:HOME.tgt.clone()};
+
+function focusChar(c){
+  focused = c;
+  desired.pos.set(c.x + 7, 29, 68);
+  desired.tgt.set(c.x, 22.5, 0);
+  startMove();
+}
+function focusHome(){
+  focused = null;
+  desired.pos.copy(HOME.pos);
+  desired.tgt.copy(HOME.tgt);
+  startMove();
+}
+function startMove(){
+  moving = true;
+  controls.enabled = false;
+  controls.autoRotate = false;
+  updatePanel(focused);
+  syncButtons();
+}
+
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+let downAt = null;
+
+renderer.domElement.addEventListener('pointerdown', function(e){
+  downAt = {x:e.clientX, y:e.clientY};
+  controls.autoRotate = false;               // hand control back to the user
+});
+renderer.domElement.addEventListener('pointerup', function(e){
+  if (!downAt) return;
+  const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+  downAt = null;
+  if (moved > 6){                            // that was an orbit drag
+    if (focused && !moving) controls.autoRotate = true;
+    return;
+  }
+  ndc.x =  (e.clientX / innerWidth)  * 2 - 1;
+  ndc.y = -(e.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(ndc, camera);
+  const hit = raycaster.intersectObjects(pickers, false)[0];
+  if (hit)           focusChar(hit.object.userData.char);
+  else if (focused)  focusHome();
+  else if (!moving)  controls.autoRotate = false;
+});
+addEventListener('keydown', function(e){
+  if (e.key === 'Escape') focusHome();
+  if (e.key >= '1' && e.key <= '5') focusChar(chars[+e.key - 1]);
+});
+
+/* ---------------------------------------------------------------------
+   11. HUD
+   ------------------------------------------------------------------ */
+const trackEl = document.getElementById('i-track');
+for (let i=0;i<20;i++) trackEl.appendChild(document.createElement('i'));
+
+function updatePanel(c){
+  const cells = trackEl.children;
+  let amanah;
+  if (c){
+    document.getElementById('i-rank').textContent = 'RANK ' + c.cfg.rank + ' // ' + c.cfg.title.toUpperCase();
+    document.getElementById('i-name').textContent = c.cfg.name;
+    document.getElementById('i-desc').textContent = c.cfg.desc;
+    amanah = c.cfg.amanah;
+    document.getElementById('i-barlabel').textContent = 'NUR AMANAH ' + amanah + '/100';
+  } else {
+    document.getElementById('i-rank').textContent = 'OVERVIEW';
+    document.getElementById('i-name').textContent = '5 Pangkat Adab';
+    document.getElementById('i-desc').textContent =
+      'Klik mana-mana karakter untuk zum dan berputar. Drag untuk orbit, scroll untuk zum, ESC untuk kembali.';
+    amanah = 0;
+    document.getElementById('i-barlabel').textContent = 'NUR AMANAH';
+  }
+  const on = Math.round(amanah / 5);
+  for (let i=0;i<cells.length;i++) cells[i].className = i < on ? 'on' : '';
+}
+
+const bar    = document.getElementById('bar');
+const btnAll = document.getElementById('btn-all');
+btnAll.addEventListener('click', focusHome);
+const rankBtns = chars.map(function(c){
+  const b = document.createElement('button');
+  b.textContent = 'R' + c.cfg.rank + ' ' + c.cfg.short.toUpperCase();
+  b.addEventListener('click', function(){ focusChar(c); });
+  bar.appendChild(b);
+  return b;
+});
+function syncButtons(){
+  btnAll.classList.toggle('active', !focused);
+  rankBtns.forEach(function(b, i){ b.classList.toggle('active', focused === chars[i]); });
+}
+updatePanel(null);
+
+/* ---------------------------------------------------------------------
+   12. Animation loop
+   ------------------------------------------------------------------ */
+const clock = new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  /* ease the camera into the focused / home pose */
+  if (moving){
+    camera.position.lerp(desired.pos, 0.07);
+    controls.target.lerp(desired.tgt, 0.07);
+    if (camera.position.distanceTo(desired.pos) < 0.4 &&
+        controls.target.distanceTo(desired.tgt) < 0.2){
+      camera.position.copy(desired.pos);
+      controls.target.copy(desired.tgt);
+      moving = false;
+      controls.enabled = true;
+      controls.autoRotate = !!focused;   // orbit the character once parked
+    }
+  }
+
+  chars.forEach(function(c){
+    const ph = c.phase;
+
+    /* idle float */
+    c.body.position.y = Math.sin(t*1.25 + ph) * 0.38;
+    c.body.rotation.y = Math.sin(t*0.35 + ph) * 0.06;
+
+    /* breathing arms, glancing head */
+    c.arms[0].rotation.x = Math.sin(t*1.25 + ph) * 0.055;
+    c.arms[1].rotation.x = Math.sin(t*1.25 + ph + Math.PI) * 0.045;
+    c.arms[0].rotation.z =  0.03 + Math.sin(t*0.9 + ph) * 0.02;
+    c.arms[1].rotation.z = -0.03 - Math.sin(t*0.9 + ph) * 0.02;
+    c.head.rotation.y = Math.sin(t*0.45 + ph) * 0.13;
+    c.head.rotation.x = Math.sin(t*0.6  + ph) * 0.03;
+
+    /* neon pulse — strong on rank 5, a faint shimmer on rank 4 */
+    if (c.pulse.length){
+      const w = Math.sin(t * (c.cfg.circuit === 2 ? 2.3 : 1.1) + ph);
+      c.pulse.forEach(function(p){
+        p.m.emissiveIntensity = Math.max(0, p.base * (1 + p.amt * w));
+      });
+      const k = 1 + (c.cfg.circuit === 2 ? 0.3 : 0.1) * w;
+      c.glows.forEach(function(g){
+        if (g.userData.base === undefined){
+          g.userData.base = g.material.opacity;
+          g.userData.sx = g.scale.x;
+          g.userData.sy = g.scale.y;
+        }
+        g.material.opacity = g.userData.base * k;
+        g.scale.set(g.userData.sx * k, g.userData.sy * k, 1);
+      });
+      c.ring.material.opacity = c.ringBase * (1 + 0.35*w);
+    }
+
+    /* the Adiguru crystal turns slowly overhead */
+    if (c.crystal) c.crystal.rotation.y = t * 0.6;
+
+    /* dim the rest of the cast so the selected rank reads clearly */
+    const want = (!focused || focused === c) ? 1 : 0.3;
+    c.lamp.intensity += (c.lampBase * want - c.lamp.intensity) * 0.08;
+    c.label.material.opacity += (want - c.label.material.opacity) * 0.08;
+  });
+
+  /* drifting motes */
+  const pos = moteGeo.attributes.position.array;
+  for (let i=0;i<MOTES;i++){
+    pos[i*3+1] -= 0.035 + (i%7)*0.004;
+    if (pos[i*3+1] < 0) pos[i*3+1] = 85;
+  }
+  moteGeo.attributes.position.needsUpdate = true;
+  grid.material.opacity = 0.24 + Math.sin(t*0.8)*0.05;
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+addEventListener('resize', function(){
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+animate();
+setTimeout(function(){ document.getElementById('loader').classList.add('gone'); }, 350);
+
+/* debug handle */
+window.NUSUKI = {scene:scene, camera:camera, controls:controls, chars:chars,
+                 renderer:renderer, focusChar:focusChar, focusHome:focusHome};
+</script>
+</body>
+</html>
