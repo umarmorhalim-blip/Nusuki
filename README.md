@@ -27,6 +27,23 @@ OrbitControls load from CDN.
 - **T** or **MOD** — switch presentation preset
 - Bottom dock buttons do the same as clicking
 
+## Roblox shapes, modern render
+
+The concept art reads as Roblox construction — blocky limbs, simple parts —
+with a modern game render laid over it, and the second half is mostly lighting
+and material, not geometry:
+
+- **Phong, not Lambert.** Flat diffuse shading is what made the voxels look
+  like matte toy bricks. Cloth takes a dim broad highlight; neon trim, the
+  keris and the belt plates take a tighter one via `shine: 'hard'`.
+- **Two back lights rake the silhouette** — pale neon from behind-right, a warm
+  counter from behind-left. Edge light is most of what separates a stylised
+  modern render from a flatly lit toy. They are kept low and the rim's green is
+  desaturated: at full saturation the light tinted whole figures olive instead
+  of just grazing their edges.
+- **Bolder extremities.** Hands and boots are oversized relative to the limbs,
+  the way stylised game characters exaggerate them.
+
 ## Two presentation presets
 
 **SIBER** is the neon scene: near-black ground, green grid, drifting motes,

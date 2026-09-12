@@ -154,7 +154,7 @@ const BG        = 0x020805;
    the total height.
    ------------------------------------------------------------------ */
 const P = {
-  footW:2.9, footH:1.5, footD:4.2, footZ:0.5, footY:0.75,
+  footW:3.3, footH:1.7, footD:4.6, footZ:0.6, footY:0.85,
   shinW:2.6, shinH:7.4, shinD:2.6, shinY:5.2,
   thighW:3.0, thighH:8.0, thighD:3.0, thighY:12.9,
   pelvisW:6.6, pelvisH:2.7, pelvisD:3.8, pelvisY:18.25,
@@ -163,7 +163,7 @@ const P = {
   headW:8.0, headH:8.0, headD:8.0, headY:32.4,
   uArmW:2.2, uArmH:6.0, uArmD:2.4, uArmY:24.0,
   lArmW:2.0, lArmH:5.4, lArmD:2.2, lArmY:18.3,
-  handW:2.3, handH:2.2, handD:2.6, handY:14.5,
+  handW:2.9, handH:2.6, handD:3.0, handY:14.4,
   legX:1.75, armX:4.75, shoulderY:27.0
 };
 const PAD     = 0.5;    // how far clothing sits outside the body
@@ -523,11 +523,22 @@ function faceTexture(skinHex){
   return t;
 }
 
+/**
+ * Phong rather than Lambert. The concept art reads as Roblox shapes with a
+ * modern game render over them, and the modern half is largely a soft sheen
+ * plus edge light -- flat diffuse shading is what made the voxels look like
+ * matte toy bricks. Cloth gets a dim, broad highlight; metal and neon trim
+ * take a tighter one.
+ */
 function mat(color, opts){
   opts = opts || {};
-  return new THREE.MeshLambertMaterial({
+  const shine = opts.shine || 'cloth';
+  const spec = shine === 'hard' ? 0x5d6b5f : shine === 'soft' ? 0x14170f : 0x22271f;
+  return new THREE.MeshPhongMaterial({
     color: color,
     map: opts.map === null ? null : (opts.map || TEX.vox),
+    specular: spec,
+    shininess: shine === 'hard' ? 34 : shine === 'soft' ? 5 : 11,
     emissive: opts.emissive !== undefined ? opts.emissive : 0x000000,
     emissiveIntensity: opts.ei !== undefined ? opts.ei : 1
   });
@@ -537,7 +548,8 @@ function mat(color, opts){
 function traceMat(c, level, kind){
   const e = EMIT[level];
   const base = e[kind];
-  const m = mat(level === 2 ? 0x0b2c15 : 0x0a1a0f, {emissive:NEON_BODY, ei:base, map:null});
+  const m = mat(level === 2 ? 0x0b2c15 : 0x0a1a0f,
+                {emissive:NEON_BODY, ei:base, map:null, shine:'hard'});
   c.pulse.push({m:m, base:base, amt:e.amt});
   return m;
 }
@@ -922,7 +934,8 @@ function buildCharacter(cfg){
   c.head = head;
 
   // chamferBox puts the +z face in group 1, so the portrait rides there alone
-  const faceMat = new THREE.MeshLambertMaterial({color:0xffffff, map:faceTexture(cfg.skin)});
+  const faceMat = new THREE.MeshPhongMaterial({color:0xffffff, map:faceTexture(cfg.skin),
+                                               specular:0x22271f, shininess:11});
   box(head, {w:P.headW, h:P.headH, d:P.headD, material:[skin, faceMat]});
   [-1,1].forEach(function(s){   // ears stand proud of the head, as in the art
     box(head, {w:0.5, h:2.0, d:1.5, x:s*(P.headW/2 + 0.22), y:-0.2, z:-0.3, material:skin});
@@ -1124,9 +1137,15 @@ scene.add(hemi);
 const key = new THREE.DirectionalLight(0xfff4e4, 0.85);
 key.position.set(-38, 52, 66);
 scene.add(key);
-const rim = new THREE.DirectionalLight(NEON, 0.2);
-rim.position.set(44, 20, -55);
+/* Two back lights rake the silhouette, which is what separates a modern
+   stylised render from a flatly lit toy: neon from behind-right, a warm
+   counter from behind-left. */
+const rim = new THREE.DirectionalLight(0x86ffa4, 0.2);
+rim.position.set(46, 30, -58);
 scene.add(rim);
+const rim2 = new THREE.DirectionalLight(0xffd7a8, 0.2);
+rim2.position.set(-52, 26, -50);
+scene.add(rim2);
 const side = new THREE.DirectionalLight(0xbfe8ff, 0.22);
 side.position.set(60, 24, 18);
 scene.add(side);
@@ -1170,14 +1189,14 @@ scene.add(moteCloud);
 const THEMES = {
   siber: {
     bg:0x020805, floor:0x04170b, fogNear:120, fogFar:340,
-    ambC:0x33403a, ambI:0.85, hemiSky:0x4c7a60, hemiGround:0x05130b, hemiI:0.5,
-    keyI:0.85, rimI:0.2, sideI:0.22, lampMul:1,
+    ambC:0x2e3630, ambI:0.68, hemiSky:0x477055, hemiGround:0x05130b, hemiI:0.38,
+    keyI:0.92, rimI:0.26, rim2I:0.26, sideI:0.16, lampMul:1,
     grid:true, motes:true, pads:true, glows:true, shadows:false, label:'dark'
   },
   studio: {
     bg:0xf2f1ed, floor:null, fogNear:280, fogFar:900,
     ambC:0xe4e6e2, ambI:0.34, hemiSky:0xffffff, hemiGround:0xb8bcb6, hemiI:0.26,
-    keyI:0.52, rimI:0.04, sideI:0.12, lampMul:0.12,
+    keyI:0.46, rimI:0.14, rim2I:0.16, sideI:0.1, lampMul:0.12,
     grid:false, motes:false, pads:false, glows:false, shadows:true, label:'light'
   }
 };
@@ -1199,6 +1218,7 @@ function applyTheme(name){
   hemi.groundColor.setHex(T.hemiGround);
   key.intensity  = T.keyI;
   rim.intensity  = T.rimI;
+  rim2.intensity = T.rim2I;
   side.intensity = T.sideI;
   grid.visible = T.grid;
   moteCloud.visible = T.motes;
