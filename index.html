@@ -60,6 +60,23 @@
 
   #hint{font-size:10px; letter-spacing:.16em; color:#437a56; text-align:center; padding:0 14px}
 
+  /* light HUD, paired with the STUDIO preset */
+  body.studio{color:#2c2e2b}
+  body.studio #title h1{color:#16301f; text-shadow:none}
+  body.studio #title p{color:#5d6b60}
+  body.studio #info{background:rgba(255,255,255,.84); border-color:rgba(30,60,40,.22); box-shadow:none}
+  body.studio #info .k, body.studio #info .bar span{color:#6d7a70}
+  body.studio #info .rank{color:#1c6b3a}
+  body.studio #info .name{color:#14140f}
+  body.studio #info .desc{color:#4a544c}
+  body.studio #info .track{background:#e7e9e4; border-color:rgba(30,60,40,.25)}
+  body.studio #info .track i{background:#d3d7d0}
+  body.studio #info .track i.on{background:#1fa855; box-shadow:none}
+  body.studio #hint{color:#7d8a80}
+  body.studio button{background:rgba(255,255,255,.86); border-color:rgba(30,60,40,.25); color:#3c4a40}
+  body.studio button:hover{color:#14140f; border-color:#1fa855; box-shadow:none}
+  body.studio button.active{background:#1fa855; border-color:#1fa855; color:#fff}
+
   #loader{
     position:fixed; inset:0; display:grid; place-items:center; z-index:50;
     background:var(--bg); color:var(--neon); font-size:12px; letter-spacing:.28em;
@@ -124,22 +141,30 @@ const BG        = 0x020805;
 
 /* ---------------------------------------------------------------------
    1. Body metrics
-   One unit ~= one voxel; a character stands ~34 units tall. Every y is
-   absolute (0 = ground) so parts can be authored independently and then
-   re-parented onto animated pivots.
+   One unit ~= one voxel; a character stands ~37 units tall including the
+   haircut. Every y is absolute (0 = ground) so parts can be authored
+   independently and then re-parented onto animated pivots.
+
+   The narrow torso, large head and long legs come from the concept art:
+   measured there, shoulder span is only about 1.28x the head width and
+   the head is 0.278 of total height. Classic Minecraft proportions sit
+   near 2.1 and 0.20, which read far stockier than the art does. The leg
+   ratio could not be measured -- the sarung hides the gap between the
+   legs -- so legs are matched to the art by eye at a little under half
+   the total height.
    ------------------------------------------------------------------ */
 const P = {
-  footW:3.2, footH:1.5, footD:4.6, footZ:0.6, footY:0.75,
-  shinW:3.0, shinH:6.0, shinD:3.0, shinY:4.5,
-  thighW:3.4, thighH:7.0, thighD:3.4, thighY:11.0,
-  pelvisW:8.0, pelvisH:3.0, pelvisD:4.2, pelvisY:16.0,
-  torsoW:8.0, torsoH:8.5, torsoD:4.2, torsoY:21.75,
-  neckW:3.0, neckH:1.4, neckD:3.0, neckY:26.5,
-  headW:7.0, headH:7.0, headD:7.0, headY:30.9,
-  uArmW:2.6, uArmH:6.0, uArmD:2.8, uArmY:23.0,
-  lArmW:2.4, lArmH:5.5, lArmD:2.6, lArmY:17.25,
-  handW:2.8, handH:2.2, handD:3.0, handY:13.4,
-  legX:2.1, armX:5.9, shoulderY:26.0
+  footW:2.9, footH:1.5, footD:4.2, footZ:0.5, footY:0.75,
+  shinW:2.6, shinH:7.4, shinD:2.6, shinY:5.2,
+  thighW:3.0, thighH:8.0, thighD:3.0, thighY:12.9,
+  pelvisW:6.6, pelvisH:2.7, pelvisD:3.8, pelvisY:18.25,
+  torsoW:6.6, torsoH:7.4, torsoD:3.8, torsoY:23.3,
+  neckW:2.6, neckH:1.4, neckD:2.6, neckY:27.7,
+  headW:8.0, headH:8.0, headD:8.0, headY:32.4,
+  uArmW:2.2, uArmH:6.0, uArmD:2.4, uArmY:24.0,
+  lArmW:2.0, lArmH:5.4, lArmD:2.2, lArmY:18.3,
+  handW:2.3, handH:2.2, handD:2.6, handY:14.5,
+  legX:1.75, armX:4.75, shoulderY:27.0
 };
 const PAD     = 0.5;    // how far clothing sits outside the body
 const SPACING = 20;     // distance between characters
@@ -161,7 +186,7 @@ const CHARS = [
     scale:0.77, pose:'clasped',
     skin:0xf0aa6d, hair:0x222221,
     shirt:0xa85c22, shirtTrim:0xc4762f, collar:null,
-    sarung:0xe5dcc9, pants:0x6f4523, sandals:true, pockets:false,
+    sarung:0xe5dcc9, sarungLong:true, pants:0x6f4523, sandals:true, pockets:false,
     headwear:'none', prop:null, pack:false, circuit:0, glow:0
   },
   {
@@ -170,7 +195,7 @@ const CHARS = [
     scale:0.88, pose:'rest',
     skin:0xf0aa6d, hair:0x222221,
     shirt:0x1a8798, shirtTrim:0x38b3c4, collar:null,
-    sarung:0x1e2a40, pants:0x2b3a52, sandals:true, pockets:true,
+    sarung:null, sarungLong:false, pants:0x2b3a52, sandals:true, pockets:true,
     headwear:'none', prop:null, pack:true, circuit:0, glow:0
   },
   {
@@ -179,7 +204,7 @@ const CHARS = [
     scale:0.92, pose:'rest',
     skin:0xf0aa6d, hair:0x222221,
     shirt:0x1d2022, shirtTrim:0x2f4036, collar:null,
-    sarung:'check', pants:0x111416, sandals:true, pockets:false,
+    sarung:'check', sarungLong:true, pants:0x111416, sandals:true, pockets:false,
     headwear:'songkok', prop:'stick', pack:false, circuit:0, glow:0
   },
   {
@@ -188,7 +213,7 @@ const CHARS = [
     scale:1.00, pose:'rest',
     skin:0xf0aa6d, hair:0x222221,
     shirt:0x0e1312, shirtTrim:0x18221d, collar:0xe9eef0,
-    sarung:0x0c100f, pants:0x0a0d0c, sandals:false, pockets:false,
+    sarung:0x0c100f, sarungLong:false, pants:0x0a0d0c, sandals:false, pockets:false,
     headwear:'tanijak', prop:'keris', pack:false, circuit:1, glow:0.5
   },
   {
@@ -197,7 +222,7 @@ const CHARS = [
     scale:1.18, pose:'rest',
     skin:0xf0aa6d, hair:0x222221,
     shirt:0x080c0a, shirtTrim:0x0e1712, collar:null,
-    sarung:0x080c0a, pants:0x060908, sandals:false, pockets:false,
+    sarung:0x080c0a, sarungLong:false, pants:0x060908, sandals:false, pockets:false,
     headwear:'tanijak-elite', prop:'keris-elite', pack:false, circuit:2, glow:1
   }
 ];
@@ -288,7 +313,21 @@ function glowTexture(){
   return new THREE.CanvasTexture(c);
 }
 
-const TEX = {grain:grainTexture(), check:checkTexture(), glow:glowTexture()};
+// Soft elliptical contact shadow, for the white studio preset.
+function shadowTexture(){
+  const s = 128, c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+  grd.addColorStop(0.00, 'rgba(0,0,0,.55)');
+  grd.addColorStop(0.45, 'rgba(0,0,0,.22)');
+  grd.addColorStop(1.00, 'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.fillRect(0,0,s,s);
+  return new THREE.CanvasTexture(c);
+}
+
+const TEX = {grain:grainTexture(), check:checkTexture(), glow:glowTexture(),
+             shadow:shadowTexture()};
 const BOX = new THREE.BoxGeometry(1,1,1);   // one geometry, scaled per part
 
 function mat(color, opts){
@@ -337,35 +376,49 @@ function glowSprite(parent, o){
   return s;
 }
 
-// Floor label: "RANK n" over the character name and specialisation.
-function labelSprite(rank, name, title){
+/**
+ * Floor label: "RANK n" over the character name. The dark scene gets a
+ * neon plate; the studio preset gets plain type on a hairline rule, the
+ * way the concept sheet captions its lineup.
+ */
+function labelTexture(rank, name, title, light){
   const w = 512, h = 176, c = document.createElement('canvas');
   c.width = w; c.height = h;
   const g = c.getContext('2d');
-
-  g.fillStyle = 'rgba(3,16,8,.62)';
-  g.fillRect(6, 26, w-12, h-52);
-  g.strokeStyle = 'rgba(57,255,106,.6)';
-  g.lineWidth = 3;
-  g.strokeRect(6, 26, w-12, h-52);
-
   g.textAlign = 'center';
-  g.fillStyle = '#7dffa6';
-  g.font = 'bold 32px "Courier New", monospace';
-  g.fillText('RANK ' + rank, w/2, 72);
 
-  g.fillStyle = '#eafff0';
-  g.font = 'bold 42px "Courier New", monospace';
-  g.fillText(name.toUpperCase(), w/2, 119);
-
-  g.fillStyle = '#79bd8f';
-  g.font = 'bold 20px "Courier New", monospace';
-  g.fillText(title.toUpperCase(), w/2, 146);
-
-  const t = new THREE.CanvasTexture(c);
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({map:t, transparent:true, depthWrite:false}));
-  s.scale.set(13.5, 4.6, 1);
-  return s;
+  if (light){
+    g.fillStyle = '#f2f1ed';
+    g.fillRect(0, 20, w, h - 34);
+    g.fillStyle = '#3d3d3a';
+    g.font = 'bold 30px "Helvetica Neue", Arial, sans-serif';
+    g.fillText('RANK ' + rank, w/2, 62);
+    g.strokeStyle = '#9a9a95';
+    g.lineWidth = 2;
+    g.beginPath(); g.moveTo(90, 82); g.lineTo(w-90, 82); g.stroke();
+    g.fillStyle = '#14140f';
+    g.font = 'bold 44px "Helvetica Neue", Arial, sans-serif';
+    g.fillText(name.toUpperCase(), w/2, 128);
+    g.fillStyle = '#6f6f68';
+    g.font = '20px "Helvetica Neue", Arial, sans-serif';
+    g.fillText(title.toUpperCase(), w/2, 158);
+  } else {
+    g.fillStyle = 'rgba(3,16,8,.62)';
+    g.fillRect(6, 26, w-12, h-52);
+    g.strokeStyle = 'rgba(57,255,106,.6)';
+    g.lineWidth = 3;
+    g.strokeRect(6, 26, w-12, h-52);
+    g.fillStyle = '#7dffa6';
+    g.font = 'bold 32px "Courier New", monospace';
+    g.fillText('RANK ' + rank, w/2, 72);
+    g.fillStyle = '#eafff0';
+    g.font = 'bold 42px "Courier New", monospace';
+    g.fillText(name.toUpperCase(), w/2, 119);
+    g.fillStyle = '#79bd8f';
+    g.font = 'bold 20px "Courier New", monospace';
+    g.fillText(title.toUpperCase(), w/2, 146);
+  }
+  return new THREE.CanvasTexture(c);
 }
 
 /* ---------------------------------------------------------------------
@@ -384,50 +437,49 @@ const FACES = {
 };
 
 /**
- * Stitch circuit traces onto the surface of a box region.
+ * Stamp a songket-style neon motif onto the surface of a box region.
+ * The concept art's glow reads as woven ornament rather than PCB routing,
+ * so this lays a slim centre stem with diamond beads (boxes rolled 45
+ * degrees about the face normal) and optional chevron wings, the way a
+ * songket panel repeats down a garment.
+ *
  * @param b   {w,h,d,x,y,z} of the host box (the clothing layer)
- * @param cfg {mat, count, thick, faces}
+ * @param cfg {mat, count, thick, faces, wings}
  */
-function addCircuits(parent, b, cfg){
-  const thick = cfg.thick || 0.24;
+function addMotif(parent, b, cfg){
+  const t     = cfg.thick || 0.22;
   const lift  = 0.06;
   const faces = cfg.faces || ['front','back','left','right'];
 
   faces.forEach(function(fname){
     const f      = FACES[fname];
-    const half   = (f.k === 'd' ? b.d : b.w) / 2 + lift;
     const alongX = f.u === 'x';
+    const half   = (f.k === 'd' ? b.d : b.w) / 2 + lift;
     const uSpan  = alongX ? b.w : b.d;
-    const vSpan  = b.h;
 
-    // Place one trace box, given face-local offsets and lengths.
-    function put(u, v, uLen, vLen){
-      const o = {material: cfg.mat, h: vLen, x: b.x, y: b.y + v, z: b.z};
-      if (alongX){ o.w = uLen; o.d = thick * 0.5; o.x += u; o.z = b.z + f.n * half; }
-      else       { o.d = uLen; o.w = thick * 0.5; o.z += u; o.x = b.x + f.n * half; }
+    // Place one motif box. `rot` spins it within the face plane, which is
+    // a Z rotation on the front/back faces and an X rotation on the sides.
+    function put(u, v, uLen, vLen, rot){
+      const o = {material:cfg.mat, h:vLen, x:b.x, y:b.y + v, z:b.z};
+      if (alongX){ o.w = uLen; o.d = t*0.5; o.x += u; o.z = b.z + f.n * half; o.rz = rot || 0; }
+      else       { o.d = uLen; o.w = t*0.5; o.z += u; o.x = b.x + f.n * half; o.rx = rot || 0; }
       box(parent, o);
     }
 
-    for (let i=0; i<cfg.count; i++){
-      // Vertical spine, a lateral jog, a second spine, then node pads.
-      let u = (rnd() - 0.5) * (uSpan - thick*4);
-      let v = -vSpan/2 + thick;
-      put(u, v + thick*1.1, thick*2.2, thick*2.2);        // root pad
-
-      const h1 = vSpan * (0.22 + rnd()*0.3);
-      put(u, v + h1/2, thick, h1);
-      v += h1;
-
-      const dir = rnd() < 0.5 ? -1 : 1;
-      const jog = uSpan * (0.13 + rnd()*0.2) * dir;
-      put(u + jog/2, v, Math.abs(jog) + thick, thick);
-      u += jog;
-
-      const h2 = vSpan * (0.14 + rnd()*0.26);
-      put(u, v + h2/2, thick, h2);
-      v += h2;
-
-      put(u, v, thick*2.4, thick*2.4);                     // end node
+    const n    = cfg.count;
+    const step = b.h / (n + 1);
+    const off  = (rnd() - 0.5) * uSpan * 0.22;   // nudge the panel off dead centre
+    put(off, 0, t*0.6, b.h*0.86);                // centre stem
+    for (let i=0;i<n;i++){
+      const v = -b.h/2 + step*(i+1);
+      put(off, v, t*2.4, t*2.4, Math.PI/4);      // diamond bead
+      if (cfg.wings){
+        const span = Math.min(uSpan*0.30, t*5.5);
+        [-1,1].forEach(function(d){
+          put(off + d*span*0.6, v + step*0.24, span, t*0.6, d*0.5);
+          put(off + d*span*1.1, v + step*0.48, t*1.3, t*1.3, Math.PI/4);
+        });
+      }
     }
   });
 }
@@ -460,7 +512,7 @@ function buildTanijak(parent, c, elite){
   const capTop = base + 3.70;
 
   // front fold carrying the circuit emblem
-  box(parent, {w:4.6, h:1.8, d:0.7, y:base + 2.6, z:P.headD/2 + 0.42, rx:0.16, material:cloth});
+  box(parent, {w:5.0, h:1.8, d:0.7, y:base + 2.6, z:P.headD/2 + 0.42, rx:0.16, material:cloth});
   box(parent, {w:1.5, h:1.5, d:0.3, y:base + 2.6, z:P.headD/2 + 0.80, rx:0.16, rz:0.79, material:trace});
   box(parent, {w:3.9, h:0.22,d:0.3, y:base + 1.85,z:P.headD/2 + 0.78, rx:0.16, material:trace});
 
@@ -480,8 +532,8 @@ function buildTanijak(parent, c, elite){
                  rz:o.rz, material:trace});
   }
   // the tall "Dendam Tak Sudah" point, then its shorter counter-fold
-  foldPlate({w:4.0, h: elite ? 3.9 : 3.3, d:3.4, ax:-0.7, rz: 0.66});
-  foldPlate({w:3.0, h: elite ? 2.5 : 2.1, d:2.9, ax: 1.8, rz:-0.78});
+  foldPlate({w:4.4, h: elite ? 4.2 : 3.5, d:3.8, ax:-0.8, rz: 0.66});
+  foldPlate({w:3.3, h: elite ? 2.7 : 2.3, d:3.2, ax: 2.0, rz:-0.78});
 
   if (elite){
     // nur motes orbiting the crown
@@ -558,12 +610,12 @@ function buildPack(parent){
   const shell = mat(0x14181c);
   const strap = mat(0x1b5d76);
   const zBack = -(P.torsoD/2 + 1.9);
-  box(parent, {w:6.4, h:7.4, d:3.2, y:P.torsoY + 0.2, z:zBack, material:shell});
-  box(parent, {w:6.6, h:1.5, d:3.4, y:P.torsoY + 3.5, z:zBack, material:strap});
-  box(parent, {w:4.4, h:2.4, d:0.9, y:P.torsoY - 1.5, z:zBack - 1.7, material:mat(0x1c2227)});
+  box(parent, {w:5.6, h:7.4, d:3.0, y:P.torsoY + 0.2, z:zBack, material:shell});
+  box(parent, {w:5.8, h:1.5, d:3.2, y:P.torsoY + 3.5, z:zBack, material:strap});
+  box(parent, {w:3.9, h:2.4, d:0.9, y:P.torsoY - 1.5, z:zBack - 1.7, material:mat(0x1c2227)});
   box(parent, {w:1.2, h:3.3, d:0.7, y:P.torsoY + 5.0, z:zBack - 0.5, material:mat(0xd8c48a)});
   [-1,1].forEach(function(s){   // shoulder straps coming over the front
-    box(parent, {w:0.8, h:8.8, d:0.7, x:s*2.8, y:P.torsoY, z:P.torsoD/2 + PAD/2 + 0.25, material:strap});
+    box(parent, {w:0.8, h:8.7, d:0.7, x:s*2.3, y:P.torsoY, z:P.torsoD/2 + PAD/2 + 0.25, material:strap});
   });
 }
 
@@ -580,8 +632,8 @@ function addHair(head, hair, full){
     return;
   }
   box(head, {w:P.headW+0.26, h:0.7, d:P.headD+0.24, y:P.headH/2 + 0.2, material:hair});
-  [[-2.8,1.5],[-1.4,2.2],[0,1.7],[1.4,2.25],[2.8,1.4]].forEach(function(st){
-    box(head, {w:1.62, h:st[1], d:P.headD+0.22, x:st[0], y:P.headH/2 + st[1]/2 - 0.1, material:hair});
+  [[-3.2,1.6],[-1.6,2.3],[0,1.8],[1.6,2.35],[3.2,1.5]].forEach(function(st){
+    box(head, {w:1.85, h:st[1], d:P.headD+0.22, x:st[0], y:P.headH/2 + st[1]/2 - 0.1, material:hair});
   });
   box(head, {w:P.headW+0.26, h:1.4, d:1.0, y:P.headH/2 - 0.75, z:hz + 0.12, material:hair});
   [-1,1].forEach(function(s){
@@ -606,7 +658,8 @@ function buildCharacter(cfg){
   const shirt = mat(cfg.shirt);
   const trim  = mat(cfg.shirtTrim);
   const pants = mat(cfg.pants);
-  const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEX.check}) : mat(cfg.sarung);
+  const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEX.check})
+                  : cfg.sarung === null ? null : mat(cfg.sarung);
   const circuits  = lvl ? traceMat(c, lvl, 'trace') : null;
   const plate     = lvl ? traceMat(c, lvl, 'plate') : null;
 
@@ -649,9 +702,9 @@ function buildCharacter(cfg){
   const eye = mat(0x17110e, {map:null});
   box(head, {w:P.headW, h:P.headH, d:P.headD, material:skin});
   [-1,1].forEach(function(s){   // simple voxel face: two dark eyes, a thin smile
-    box(head, {w:1.2, h:1.35, d:0.16, x:s*1.72, y:0.5, z:P.headD/2 + 0.08, material:eye});
+    box(head, {w:1.35, h:1.5, d:0.16, x:s*1.95, y:0.6, z:P.headD/2 + 0.08, material:eye});
   });
-  box(head, {w:1.7, h:0.28, d:0.14, y:-1.55, z:P.headD/2 + 0.08, material:mat(0x8f5a46, {map:null})});
+  box(head, {w:1.9, h:0.3, d:0.14, y:-1.75, z:P.headD/2 + 0.08, material:mat(0x8f5a46, {map:null})});
   addHair(head, hair, cfg.headwear === 'none');
 
   /* ---- arms: one pivot group per side, hinged at the shoulder ---- */
@@ -682,10 +735,11 @@ function buildCharacter(cfg){
       box(arm, {w:P.lArmW+PAD+0.3, h:0.6, d:P.lArmD+PAD+0.3, y:rel(P.lArmY) + 1.9, material:plate});
       box(arm, {w:P.uArmW+PAD+0.35, h:0.6, d:P.uArmD+PAD+0.35, y:rel(P.uArmY) + 2.6,
                 material: lvl === 2 ? plate : mat(0x131c17)});
-      addCircuits(arm, {w:P.uArmW+PAD, h:P.uArmH, d:P.uArmD+PAD, x:0, y:rel(P.uArmY), z:0},
-                  {mat:circuits, count:1, thick:0.2, faces: lvl === 2 ? ['front','right','left'] : ['front']});
-      addCircuits(arm, {w:P.lArmW+PAD, h:P.lArmH, d:P.lArmD+PAD, x:0, y:rel(P.lArmY), z:0},
-                  {mat:circuits, count:1, thick:0.2, faces:['front']});
+      addMotif(arm, {w:P.uArmW+PAD, h:P.uArmH, d:P.uArmD+PAD, x:0, y:rel(P.uArmY), z:0},
+               {mat:circuits, count: lvl === 2 ? 2 : 1, thick:0.18,
+                faces: lvl === 2 ? ['front','right','left'] : ['front']});
+      addMotif(arm, {w:P.lArmW+PAD, h:P.lArmH, d:P.lArmD+PAD, x:0, y:rel(P.lArmY), z:0},
+               {mat:circuits, count:1, thick:0.18, faces:['front']});
     }
   });
 
@@ -693,26 +747,31 @@ function buildCharacter(cfg){
   box(c.body, {w:P.torsoW+PAD, h:P.torsoH+0.4, d:P.torsoD+PAD, y:P.torsoY-0.1, material:shirt});
   box(c.body, {w:P.torsoW+PAD+0.2, h:1.0, d:P.torsoD+PAD+0.2, y:P.torsoY - P.torsoH/2 - 0.2, material:trim});
   if (cfg.collar){   // white shirt showing at the neckline
-    box(c.body, {w:3.4, h:1.6, d:P.neckD+1.2, y:P.torsoY + P.torsoH/2 - 0.1,
+    box(c.body, {w:2.9, h:1.6, d:P.neckD+1.2, y:P.torsoY + P.torsoH/2 - 0.1,
                  z:0.5, material:mat(cfg.collar)});
   }
-  box(c.body, {w:4.4, h:1.2, d:P.neckD+1.6, y:P.torsoY + P.torsoH/2 + 0.4, material:trim});   // collar
+  box(c.body, {w:3.7, h:1.2, d:P.neckD+1.6, y:P.torsoY + P.torsoH/2 + 0.4, material:trim});   // collar
   // front opening: a glowing placket on the powered ranks
   box(c.body, {w:0.9, h:P.torsoH*0.76, d:0.35, y:P.torsoY + 0.4,
                z:P.torsoD/2 + PAD/2 + 0.12, material: lvl ? plate : trim});
   [-1,1].forEach(function(s){   // pesak side panels + shoulder seam
     box(c.body, {w:0.45, h:P.torsoH+0.4, d:P.torsoD+PAD+0.05, x:s*(P.torsoW+PAD)/2, y:P.torsoY-0.1, material:trim});
-    box(c.body, {w:1.3, h:0.6, d:P.torsoD+PAD, x:s*(P.torsoW/2 + 0.9), y:P.torsoY + P.torsoH/2, material:trim});
+    box(c.body, {w:1.2, h:0.6, d:P.torsoD+PAD, x:s*(P.torsoW/2 + 0.75), y:P.torsoY + P.torsoH/2, material:trim});
   });
 
-  /* ---- sarung / samping over the hips ---- */
-  const sarungH = 6.4, sarungY = 15.3;
-  box(c.body, {w:P.pelvisW+PAD+0.6, h:sarungH, d:P.pelvisD+PAD+0.6, y:sarungY, material:sarungMat});
-  const beltY = sarungY + sarungH/2 - 0.3;
+  /* ---- sarung / samping: knee length on the barefoot ranks ---- */
+  const sarungH = cfg.sarungLong ? 9.4 : 5.4;
+  const sarungY = P.pelvisY + P.pelvisH/2 - sarungH/2;
+  if (sarungMat){
+    box(c.body, {w:P.pelvisW+PAD+0.7, h:sarungH, d:P.pelvisD+PAD+0.7, y:sarungY, material:sarungMat});
+    box(c.body, {w:P.pelvisW+PAD+0.9, h:0.5, d:P.pelvisD+PAD+0.9,
+                 y:sarungY - sarungH/2 + 0.2, material: cfg.sarung === 'check' ? sarungMat : trim});
+  }
+  const beltY = P.pelvisY + P.pelvisH/2 - 0.35;
   box(c.body, {w:P.pelvisW+PAD+1.0, h: lvl ? 0.8 : 1.1, d:P.pelvisD+PAD+1.0, y:beltY,
                material: lvl ? plate : trim});
   if (lvl){   // centre buckle with two smaller side blocks, as in the art
-    [[0, 2.0, 1.6], [-2.6, 1.0, 0.8], [2.6, 1.0, 0.8]].forEach(function(b){
+    [[0, 1.9, 1.5], [-2.2, 0.95, 0.8], [2.2, 0.95, 0.8]].forEach(function(b){
       box(c.body, {w:b[1], h:b[2], d:0.6, x:b[0], y:beltY,
                    z:(P.pelvisD+PAD+1.0)/2 + 0.2, material:plate});
     });
@@ -720,11 +779,11 @@ function buildCharacter(cfg){
 
   /* ---- circuitry across torso and thighs ---- */
   if (lvl){
-    addCircuits(c.body, {w:P.torsoW+PAD, h:P.torsoH+0.4, d:P.torsoD+PAD, x:0, y:P.torsoY-0.1, z:0},
-                {mat:circuits, count: lvl === 2 ? 2 : 1, thick:0.26});
+    addMotif(c.body, {w:P.torsoW+PAD, h:P.torsoH+0.4, d:P.torsoD+PAD, x:0, y:P.torsoY-0.1, z:0},
+             {mat:circuits, count: lvl === 2 ? 3 : 2, thick:0.22, wings:true});
     [-1,1].forEach(function(s){
-      addCircuits(c.body, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:s*P.legX, y:P.thighY, z:0},
-                  {mat:circuits, count:1, thick:0.2, faces: s > 0 ? ['front','right'] : ['front','left']});
+      addMotif(c.body, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:s*P.legX, y:P.thighY, z:0},
+               {mat:circuits, count:2, thick:0.18, faces: s > 0 ? ['front','right'] : ['front','left']});
       // thigh plate
       box(c.body, {w:P.thighW+PAD+0.3, h:0.7, d:P.thighD+PAD+0.3, x:s*P.legX, y:P.thighY - 2.5,
                    material:plate});
@@ -747,13 +806,13 @@ function buildCharacter(cfg){
   if (cfg.pack) buildPack(c.body);
   const rightArm = c.arms[1];
   if (cfg.prop === 'stick'){
-    buildStick(rightArm).position.set(1.5, P.handY - P.shoulderY + 0.2, 2.3);
+    buildStick(rightArm).position.set(1.3, P.handY - P.shoulderY + 0.2, 2.1);
   } else if (cfg.prop === 'keris' || cfg.prop === 'keris-elite'){
     buildKeris(rightArm, c, cfg.prop === 'keris-elite')
-      .position.set(2.1, P.handY - P.shoulderY + 0.4, 2.5);
+      .position.set(1.8, P.handY - P.shoulderY + 0.4, 2.3);
   }
 
-  /* ---- ground pad, ring and label (not scaled or bobbed) ---- */
+  /* ---- ground pad, ring, shadow and label (not scaled or bobbed) ---- */
   const pad = new THREE.Mesh(
     new THREE.CircleGeometry(7.6, 32),
     new THREE.MeshBasicMaterial({color: cfg.glow ? NEON : 0x1c6e38, transparent:true,
@@ -762,6 +821,17 @@ function buildCharacter(cfg){
   pad.rotation.x = -Math.PI/2;
   pad.position.y = 0.04;
   c.slot.add(pad);
+  c.pad = pad;
+
+  const shade = new THREE.Mesh(
+    new THREE.PlaneGeometry(17 * cfg.scale, 10 * cfg.scale),
+    new THREE.MeshBasicMaterial({map:TEX.shadow, transparent:true, depthWrite:false, opacity:0.85})
+  );
+  shade.rotation.x = -Math.PI/2;
+  shade.position.set(0, 0.03, 1.4);
+  shade.visible = false;
+  c.slot.add(shade);
+  c.shadow = shade;
 
   c.ringBase = 0.16 + 0.3*cfg.glow;
   const ring = new THREE.Mesh(
@@ -773,8 +843,13 @@ function buildCharacter(cfg){
   c.slot.add(ring);
   c.ring = ring;
 
-  c.label = labelSprite(cfg.rank, cfg.name, cfg.title);
-  c.label.position.set(0, 2.2, 9.0);
+  c.labelTex = {dark:  labelTexture(cfg.rank, cfg.name, cfg.title, false),
+                light: labelTexture(cfg.rank, cfg.name, cfg.title, true)};
+  c.label = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:c.labelTex.dark, transparent:true, depthWrite:false
+  }));
+  c.label.scale.set(13.5, 4.6, 1);
+  c.label.position.set(0, 2.2, 9.6);
   c.slot.add(c.label);
 
   /* ---- invisible click target ---- */
@@ -792,6 +867,7 @@ function buildCharacter(cfg){
   lamp.position.set(0, 46, 12);
   c.slot.add(lamp);
   c.lamp = lamp;
+  c.lampBase0 = lamp.intensity;   // unscaled; the theme switch dims it
   c.lampBase = lamp.intensity;
 
   return c;
@@ -814,8 +890,10 @@ CHARS.forEach(function(cfg, i){
 });
 
 /* lights: a neutral key so fabric colours read, plus a green rim/wash */
-scene.add(new THREE.AmbientLight(0x33403a, 0.85));
-scene.add(new THREE.HemisphereLight(0x4c7a60, 0x05130b, 0.5));
+const amb = new THREE.AmbientLight(0x33403a, 0.85);
+scene.add(amb);
+const hemi = new THREE.HemisphereLight(0x4c7a60, 0x05130b, 0.5);
+scene.add(hemi);
 const key = new THREE.DirectionalLight(0xfff4e4, 0.85);
 key.position.set(-38, 52, 66);
 scene.add(key);
@@ -850,10 +928,65 @@ for (let i=0;i<MOTES;i++){
   mp[i*3+2] = (Math.random()-0.5)*170;
 }
 moteGeo.setAttribute('position', new THREE.BufferAttribute(mp, 3));
-scene.add(new THREE.Points(moteGeo, new THREE.PointsMaterial({
+const moteCloud = new THREE.Points(moteGeo, new THREE.PointsMaterial({
   color:NEON_SOFT, size:2.2, sizeAttenuation:false, transparent:true, opacity:0.45,
   depthWrite:false, blending:THREE.AdditiveBlending
-})));
+}));
+scene.add(moteCloud);
+
+/* ---------------------------------------------------------------------
+   9b. Presentation presets
+   SIBER is the neon scene; STUDIO reproduces the concept sheet's white
+   product shot -- soft key light, contact shadows, plain captions, and
+   none of the additive glow, which would be invisible on white anyway.
+   ------------------------------------------------------------------ */
+const THEMES = {
+  siber: {
+    bg:0x020805, floor:0x04170b, fogNear:120, fogFar:340,
+    ambC:0x33403a, ambI:0.85, hemiSky:0x4c7a60, hemiGround:0x05130b, hemiI:0.5,
+    keyI:0.85, rimI:0.2, sideI:0.22, lampMul:1,
+    grid:true, motes:true, pads:true, glows:true, shadows:false, label:'dark'
+  },
+  studio: {
+    bg:0xf2f1ed, floor:null, fogNear:280, fogFar:900,
+    ambC:0xe4e6e2, ambI:0.34, hemiSky:0xffffff, hemiGround:0xb8bcb6, hemiI:0.26,
+    keyI:0.52, rimI:0.04, sideI:0.12, lampMul:0.12,
+    grid:false, motes:false, pads:false, glows:false, shadows:true, label:'light'
+  }
+};
+let themeName = 'siber';
+let btnTheme = null;
+
+function applyTheme(name){
+  themeName = name;
+  const T = THEMES[name];
+  scene.background.setHex(T.bg);
+  scene.fog.color.setHex(T.bg);
+  scene.fog.near = T.fogNear;
+  scene.fog.far  = T.fogFar;
+  renderer.setClearColor(T.bg, 1);
+  floor.visible = T.floor !== null;
+  if (T.floor !== null) floor.material.color.setHex(T.floor);
+  amb.color.setHex(T.ambC);       amb.intensity  = T.ambI;
+  hemi.color.setHex(T.hemiSky);   hemi.intensity = T.hemiI;
+  hemi.groundColor.setHex(T.hemiGround);
+  key.intensity  = T.keyI;
+  rim.intensity  = T.rimI;
+  side.intensity = T.sideI;
+  grid.visible = T.grid;
+  moteCloud.visible = T.motes;
+  chars.forEach(function(c){
+    c.pad.visible = T.pads;
+    c.ring.visible = T.pads;
+    c.shadow.visible = T.shadows;
+    c.glows.forEach(function(g){ g.visible = T.glows; });
+    c.lampBase = c.lampBase0 * T.lampMul;
+    c.label.material.map = c.labelTex[T.label];
+    c.label.material.needsUpdate = true;
+  });
+  document.body.classList.toggle('studio', name === 'studio');
+  if (btnTheme) btnTheme.textContent = name === 'siber' ? 'MOD: SIBER' : 'MOD: STUDIO';
+}
 
 /* ---------------------------------------------------------------------
    10. Focus / camera transitions
@@ -910,6 +1043,7 @@ renderer.domElement.addEventListener('pointerup', function(e){
 addEventListener('keydown', function(e){
   if (e.key === 'Escape') focusHome();
   if (e.key >= '1' && e.key <= '5') focusChar(chars[+e.key - 1]);
+  if (e.key === 't' || e.key === 'T') applyTheme(themeName === 'siber' ? 'studio' : 'siber');
 });
 
 /* ---------------------------------------------------------------------
@@ -949,11 +1083,20 @@ const rankBtns = chars.map(function(c){
   bar.appendChild(b);
   return b;
 });
+btnTheme = document.createElement('button');
+btnTheme.id = 'btn-theme';
+btnTheme.textContent = 'MOD: SIBER';
+btnTheme.addEventListener('click', function(){
+  applyTheme(themeName === 'siber' ? 'studio' : 'siber');
+});
+bar.appendChild(btnTheme);
+
 function syncButtons(){
   btnAll.classList.toggle('active', !focused);
   rankBtns.forEach(function(b, i){ b.classList.toggle('active', focused === chars[i]); });
 }
 updatePanel(null);
+applyTheme('siber');
 
 /* ---------------------------------------------------------------------
    12. Animation loop

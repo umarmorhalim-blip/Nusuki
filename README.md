@@ -24,7 +24,21 @@ OrbitControls load from CDN.
 - **Scroll** — zoom
 - **Click a character** — ease the camera in and slowly orbit them
 - **1–5** — jump to a rank; **Esc** or **OVERVIEW** — back out
+- **T** or **MOD** — switch presentation preset
 - Bottom dock buttons do the same as clicking
+
+## Two presentation presets
+
+**SIBER** is the neon scene: near-black ground, green grid, drifting motes,
+glowing ground rings, additive bloom sprites and a green HUD.
+
+**STUDIO** reproduces the concept sheet's white product shot. It drops the
+floor plane entirely so no horizon cuts the frame, puts a soft elliptical
+contact shadow under each figure, swaps the captions for plain black type on
+a white card, dims the per-character lamps and hides the additive glow —
+which would be invisible over white anyway. Exposure is set so the sum of
+ambient, hemisphere and key contributions stays under 1.0 on the brightest
+face; the earlier values clipped and turned the brown baju yellow.
 
 ## Traced from the concept art
 
@@ -43,6 +57,15 @@ lineup instead of eyeballing it:
   `#d1ffa9` bloom core — a yellower green than the HUD's `#39ff6a`. The
   renderer keeps `#39ff6a` for interface chrome and uses `#4dff52` on the
   characters.
+- **Build.** Measured from the silhouette rather than from colour, because a
+  skin-tone mask catches hands and bare feet and drags the "chin" down to the
+  toes. The neck is the narrowest scanline in the upper body, which gives a
+  reliable head/shoulder split: in the art, shoulder span is only **1.28×**
+  the head width and the head is **0.278** of total height. Classic Minecraft
+  proportions sit near 2.10 and 0.20, which is why the first pass read
+  stocky. The leg ratio is *not* measurable here — the sarung hides the gap
+  between the legs, so the crotch detector returns nonsense — and legs are
+  matched by eye instead.
 
 The columns for ranks 4 and 5 need splitting by hand because their neon glow
 bridges the gap between them; `trace_proportions.py` cuts the merged run at
