@@ -8,6 +8,20 @@ voxels, with neon green circuitry on the higher ranks.
 Open `index.html` in a browser. No build step, no install; Three.js r128 and
 OrbitControls load from CDN.
 
+## Plugins
+
+`.claude/settings.json` registers the [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)
+marketplace and enables its plugin — a searchable local database of UI styles,
+palettes, font pairings, charts and per-stack guidelines, plus six sibling
+skills (`design`, `design-system`, `ui-styling`, `brand`, `banner-design`,
+`slides`).
+
+It is registered as a **plugin**, not copied into `.claude/skills/`, because
+its search tool resolves through `${CLAUDE_PLUGIN_ROOT}` — a variable only set
+for installed plugins. A copied skills folder would load its instructions but
+break every `python .../search.py` call in them. Its scripts need Python 3,
+which is available here.
+
 ## Files
 
 | File | What it is |
