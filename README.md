@@ -26,6 +26,28 @@ OrbitControls load from CDN.
 - **1–5** — jump to a rank; **Esc** or **OVERVIEW** — back out
 - Bottom dock buttons do the same as clicking
 
+## Traced from the concept art
+
+`tools/trace_palette.py` and `tools/trace_proportions.py` sample the concept
+lineup instead of eyeballing it:
+
+- **Proportions.** Each figure's ground-to-forehead height is measured in
+  pixels — a landmark that ignores headwear, so the tanijak doesn't inflate
+  the ratio. Normalised to rank 4 this gives the `scale` values the renderer
+  uses: 0.77 / 0.88 / 0.92 / 1.00 / 1.18. Rank 1 really is only about
+  two-thirds the height of rank 5 in the art.
+- **Cloth colours.** For each garment band the scripts average the brightest
+  40% of pixels (the lit faces, which is the tone a material reads as) rather
+  than the most common colour, which would return the shadow side.
+- **Neon hue.** The art's circuitry averages around `#2e982a` with a
+  `#d1ffa9` bloom core — a yellower green than the HUD's `#39ff6a`. The
+  renderer keeps `#39ff6a` for interface chrome and uses `#4dff52` on the
+  characters.
+
+The columns for ranks 4 and 5 need splitting by hand because their neon glow
+bridges the gap between them; `trace_proportions.py` cuts the merged run at
+its sparsest interior column.
+
 ## How a character is built
 
 Each figure is assembled in four passes inside `buildCharacter()`:

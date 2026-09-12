@@ -111,13 +111,15 @@
 
    Five ranked characters, each assembled from BoxGeometry voxels in
    four passes: bare body -> clothing shell (slightly larger boxes) ->
-   headwear -> neon circuitry. Emissive materials plus additive glow
-   sprites stand in for post-process bloom, so the whole scene stays
-   at a few thousand triangles with no shadow maps.
+   headwear -> neon armour plates and circuitry. Stature rises with
+   rank. Emissive materials plus additive glow sprites stand in for
+   post-process bloom, so the whole scene stays at a few thousand
+   triangles with no shadow maps.
    ===================================================================== */
 
-const NEON      = 0x39ff6a;
-const NEON_SOFT = 0x7dffa6;
+const NEON      = 0x39ff6a;   // UI / grid / ground rings
+const NEON_BODY = 0x4dff52;   // character circuitry — sampled off the concept art,
+const NEON_SOFT = 0xb6ffa8;   // whose neon sits a little yellower than the HUD green
 const BG        = 0x020805;
 
 /* ---------------------------------------------------------------------
@@ -145,54 +147,65 @@ const SPACING = 20;     // distance between characters
 /* ---------------------------------------------------------------------
    2. Character definitions
    circuit: 0 none, 1 subtle (rank 4), 2 full (rank 5)
+
+   `scale` and the fabric colours are traced off the concept lineup: each
+   figure's ground-to-forehead height was measured in pixels (a landmark
+   that ignores headwear, so the tanijak doesn't inflate the ratio) and
+   normalised to rank 4, giving 0.77 / 0.88 / 0.92 / 1.00 / 1.18. Cloth
+   tones come from averaging the lit faces of each garment in the art.
    ------------------------------------------------------------------ */
 const CHARS = [
   {
     rank:1, short:'Dagang', name:'Anak Dagang', title:'Pedagang Muda', amanah:24,
-    desc:'Baju melayu kain kasar, sarung putih. Belum ada nur — adab masih di peringkat niat.',
-    skin:0xd8996a, hair:0x191310,
-    shirt:0x7d4526, shirtTrim:0xa26034,
-    sarung:0xe8e4d8, sarungLong:true, pants:null, shoe:0xdcae74,
+    desc:'Baju melayu kain kasar, samping putih, berkaki selipar. Belum ada nur — adab masih di peringkat niat.',
+    scale:0.77, pose:'clasped',
+    skin:0xf0aa6d, hair:0x222221,
+    shirt:0xa85c22, shirtTrim:0xc4762f, collar:null,
+    sarung:0xe5dcc9, pants:0x6f4523, sandals:true, pockets:false,
     headwear:'none', prop:null, pack:false, circuit:0, glow:0
   },
   {
     rank:2, short:'Perantau', name:'Perantau', title:'Pengembara Ilmu', amanah:45,
-    desc:'Baju biru perantau, seluar gelap, beg sandar penuh catatan. Mula mengumpul ilmu di luar kampung.',
-    skin:0xd8996a, hair:0x191310,
-    shirt:0x1f79a0, shirtTrim:0x46b6d4,
-    sarung:0x232f47, sarungLong:false, pants:0x1c2539, shoe:0xdcae74,
+    desc:'Baju biru perantau, seluar jean gelap, beg sandar penuh catatan. Mula mengumpul ilmu di luar kampung.',
+    scale:0.88, pose:'rest',
+    skin:0xf0aa6d, hair:0x222221,
+    shirt:0x1a8798, shirtTrim:0x38b3c4, collar:null,
+    sarung:0x1e2a40, pants:0x2b3a52, sandals:true, pockets:true,
     headwear:'none', prop:null, pack:true, circuit:0, glow:0
   },
   {
     rank:3, short:'Pendekar', name:'Pendekar Muda', title:'Murid Gelanggang', amanah:63,
     desc:'Baju melayu hitam, songkok, samping berpetak. Memegang kayu latihan — silat bermula dengan hormat.',
-    skin:0xd8996a, hair:0x191310,
-    shirt:0x16191b, shirtTrim:0x2c3b32,
-    sarung:'check', sarungLong:false, pants:0x111416, shoe:0xdcae74,
+    scale:0.92, pose:'rest',
+    skin:0xf0aa6d, hair:0x222221,
+    shirt:0x1d2022, shirtTrim:0x2f4036, collar:null,
+    sarung:'check', pants:0x111416, sandals:true, pockets:false,
     headwear:'songkok', prop:'stick', pack:false, circuit:0, glow:0
   },
   {
     rank:4, short:'Pahlawan', name:'Pahlawan Siber', title:'Panglima Siber', amanah:84,
-    desc:'Litar neon halus menyala pada baju. Tanijak hitam berdenyut perlahan, keris siber di tangan.',
-    skin:0xd8996a, hair:0x191310,
-    shirt:0x0e1312, shirtTrim:0x18221d,
-    sarung:0x0c100f, sarungLong:false, pants:0x0a0d0c, shoe:0x0c100e,
+    desc:'Litar neon halus menyala pada baju, plat nur di tali pinggang dan but. Tanijak hitam berdenyut perlahan, keris siber di tangan.',
+    scale:1.00, pose:'rest',
+    skin:0xf0aa6d, hair:0x222221,
+    shirt:0x0e1312, shirtTrim:0x18221d, collar:0xe9eef0,
+    sarung:0x0c100f, pants:0x0a0d0c, sandals:false, pockets:false,
     headwear:'tanijak', prop:'keris', pack:false, circuit:1, glow:0.5
   },
   {
     rank:5, short:'Adiguru', name:'Adiguru', title:'Guru Silat • Al-Amin', amanah:98,
-    desc:'Litar nur penuh menyala di seluruh tubuh. Tanijak Dendam Tak Sudah bercahaya, keris nur di tangan.',
-    skin:0xd8996a, hair:0x191310,
-    shirt:0x080c0a, shirtTrim:0x0e1712,
-    sarung:0x080c0a, sarungLong:false, pants:0x060908, shoe:0x080b09,
+    desc:'Litar nur penuh menyala di seluruh tubuh. Tanijak Dendam Tak Sudah bercahaya dengan zarah nur, keris nur di tangan.',
+    scale:1.18, pose:'rest',
+    skin:0xf0aa6d, hair:0x222221,
+    shirt:0x080c0a, shirtTrim:0x0e1712, collar:null,
+    sarung:0x080c0a, pants:0x060908, sandals:false, pockets:false,
     headwear:'tanijak-elite', prop:'keris-elite', pack:false, circuit:2, glow:1
   }
 ];
 
 /* emissive strength per circuit level: [base, pulse amount] */
 const EMIT = {
-  1: {trace:0.26, belt:0.24, blade:0.58, crown:0.30, amt:0.16},
-  2: {trace:0.85, belt:0.78, blade:1.10, crown:0.95, amt:0.32}
+  1: {trace:0.26, plate:0.34, blade:0.58, crown:0.30, amt:0.16},
+  2: {trace:0.85, plate:0.82, blade:1.10, crown:0.95, amt:0.32}
 };
 
 /* ---------------------------------------------------------------------
@@ -209,7 +222,7 @@ scene.background = new THREE.Color(BG);
 scene.fog = new THREE.Fog(BG, 120, 340);
 
 const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.5, 900);
-const HOME = {pos:new THREE.Vector3(6, 29, 88), tgt:new THREE.Vector3(6, 19, 0)};
+const HOME = {pos:new THREE.Vector3(8, 31, 98), tgt:new THREE.Vector3(8, 21, 0)};
 camera.position.copy(HOME.pos);
 
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -248,8 +261,8 @@ function checkTexture(){
   const s = 48, c = document.createElement('canvas');
   c.width = c.height = s;
   const g = c.getContext('2d');
-  g.fillStyle = '#f4f2ea'; g.fillRect(0,0,s,s);
-  g.fillStyle = '#1e1f20';
+  g.fillStyle = '#dedbd4'; g.fillRect(0,0,s,s);
+  g.fillStyle = '#35373a';
   for (let y=0;y<s;y+=8) for (let x=0;x<s;x+=8)
     if (((x/8)+(y/8)) % 2 === 0) g.fillRect(x,y,8,8);
   g.fillStyle = 'rgba(0,0,0,.28)';
@@ -292,7 +305,7 @@ function mat(color, opts){
 function traceMat(c, level, kind){
   const e = EMIT[level];
   const base = e[kind];
-  const m = mat(level === 2 ? 0x0a2c18 : 0x091a11, {emissive:NEON, ei:base, map:null});
+  const m = mat(level === 2 ? 0x0b2c15 : 0x0a1a0f, {emissive:NEON_BODY, ei:base, map:null});
   c.pulse.push({m:m, base:base, amt:e.amt});
   return m;
 }
@@ -423,16 +436,16 @@ function addCircuits(parent, b, cfg){
    6. Headwear
    ------------------------------------------------------------------ */
 function buildSongkok(parent){
-  const m = mat(0x13150f);
-  box(parent, {w:P.headW+0.5, h:3.4, d:P.headD+0.5, y:P.headY + P.headH/2 + 1.5, material:m});
-  box(parent, {w:P.headW+0.15, h:0.5, d:P.headD+0.15, y:P.headY + P.headH/2 + 3.4, material:m});
-  box(parent, {w:P.headW+0.6, h:0.4, d:P.headD+0.6, y:P.headY + P.headH/2 + 0.2, material:mat(0x202418)});
+  const felt = mat(0x13150f);
+  box(parent, {w:P.headW+0.5, h:3.3, d:P.headD+0.5, y:P.headY + P.headH/2 + 1.45, material:felt});
+  box(parent, {w:P.headW+0.15,h:0.5, d:P.headD+0.15,y:P.headY + P.headH/2 + 3.35, material:felt});
+  box(parent, {w:P.headW+0.62,h:0.4, d:P.headD+0.62,y:P.headY + P.headH/2 + 0.2,  material:mat(0x212517)});
 }
 
 /**
- * Tanijak / tengkolok: a folded cloth crown. A base band plus flat
- * plates fanned upward-left at rising angles, echoing the real fold,
- * finished with the upswept "Dendam Tak Sudah" peak.
+ * Tanijak / tengkolok: a compact folded crown with two upswept horns —
+ * the tall "Dendam Tak Sudah" point on the wearer's left and a shorter
+ * counter-fold on the right, with a glowing emblem on the front fold.
  */
 function buildTanijak(parent, c, elite){
   const lvl   = elite ? 2 : 1;
@@ -440,109 +453,142 @@ function buildTanijak(parent, c, elite){
   const trace = traceMat(c, lvl, 'crown');
   const base  = P.headY + P.headH/2;
 
-  // crown band with embroidery lines
-  box(parent, {w:P.headW+0.8, h:2.4, d:P.headD+0.8, y:base + 1.1, material:cloth});
-  box(parent, {w:P.headW+0.9, h:0.30, d:P.headD+0.9, y:base + 2.15, material:trace});
-  box(parent, {w:P.headW+0.9, h:0.26, d:P.headD+0.9, y:base + 0.35, material:trace});
+  // low band, then the folded body of the cloth
+  box(parent, {w:P.headW+0.8, h:1.9, d:P.headD+0.8, y:base + 0.85, material:cloth});
+  box(parent, {w:P.headW+0.9, h:0.26,d:P.headD+0.9, y:base + 1.70, material:trace});
+  box(parent, {w:P.headW+0.5, h:2.0, d:P.headD+0.5, y:base + 2.70, material:cloth});
+  const capTop = base + 3.70;
 
-  // folded wrap, fanning up and to the left
-  const folds = elite ? 4 : 3;
-  for (let i=0;i<folds;i++){
-    const w  = (P.headW + 0.4) - i*0.85;
-    const d  = (P.headD + 0.4) - i*0.8;
-    const y  = base + 2.55 + i*0.82;
-    const x  = -0.25 - i*0.38;
-    const rz = 0.16 + i*0.11;
-    box(parent, {w:w, h:0.85, d:d, x:x, y:y, rz:rz, rx:-0.06, material:cloth});
-    box(parent, {w:w*0.94, h:0.16, d:d*0.5, x:x, y:y + 0.52, z:d*0.2, rz:rz, rx:-0.06, material:trace});
+  // front fold carrying the circuit emblem
+  box(parent, {w:4.6, h:1.8, d:0.7, y:base + 2.6, z:P.headD/2 + 0.42, rx:0.16, material:cloth});
+  box(parent, {w:1.5, h:1.5, d:0.3, y:base + 2.6, z:P.headD/2 + 0.80, rx:0.16, rz:0.79, material:trace});
+  box(parent, {w:3.9, h:0.22,d:0.3, y:base + 1.85,z:P.headD/2 + 0.78, rx:0.16, material:trace});
+
+  /* The upswept folds. Each is a plate hinged at a point on the cap's top
+     face, so the geometry rises out of the crown instead of hovering over
+     it: offset the centre by half its length along the rotated axis. */
+  function foldPlate(o){
+    const half = o.h / 2;
+    const x = o.ax - half * Math.sin(o.rz);
+    const y = capTop - 1.15 + half * Math.cos(o.rz);
+    box(parent, {w:o.w, h:o.h, d:o.d, x:x, y:y, rz:o.rz, material:cloth});
+    box(parent, {w:o.w*0.16, h:o.h*0.78, d:0.3, x:x, y:y, z:o.d/2 + 0.1,
+                 rz:o.rz, material:trace});
+    box(parent, {w:o.w*0.86, h:0.24, d:o.d*0.9,
+                 x:x + half * 0.92 * -Math.sin(o.rz),
+                 y:y + half * 0.92 *  Math.cos(o.rz),
+                 rz:o.rz, material:trace});
   }
-
-  // the upswept peak
-  const peakY = base + 2.55 + folds*0.82 + 1.7;
-  box(parent, {w:2.8, h:4.8, d:1.7, x:-1.9, y:peakY, rz:0.52, rx:-0.08, material:cloth});
-  box(parent, {w:1.2, h:4.4, d:0.5, x:-2.3, y:peakY + 0.2, z:0.75, rz:0.52, rx:-0.08, material:trace});
-  box(parent, {w:1.9, h:0.9, d:1.5, x:-3.1, y:peakY + 2.3, rz:0.88, material:cloth});
+  // the tall "Dendam Tak Sudah" point, then its shorter counter-fold
+  foldPlate({w:4.0, h: elite ? 3.9 : 3.3, d:3.4, ax:-0.7, rz: 0.66});
+  foldPlate({w:3.0, h: elite ? 2.5 : 2.1, d:2.9, ax: 1.8, rz:-0.78});
 
   if (elite){
-    // Floating crystalline node above the crown.
-    const crystal = mat(0x0d3a1f, {emissive:NEON, ei:1.05, map:null});
-    c.pulse.push({m:crystal, base:1.05, amt:0.42});
-    const cg = new THREE.Group();
-    cg.position.set(0, base + 7.9, 0);
-    box(cg, {w:2.3, h:1.3, d:2.3, ry:0.78, material:crystal});
-    box(cg, {w:1.3, h:1.5, d:1.3, y:1.1, ry:0.4, material:crystal});
-    box(cg, {w:0.55,h:1.1, d:0.55,y:2.1, material:crystal});
-    parent.add(cg);
-    c.crystal = cg;
-    c.glows.push(glowSprite(parent, {y:base + 8.9, size:12, opacity:0.5}));
-    c.glows.push(glowSprite(parent, {y:base + 3.4, size:15, opacity:0.26}));
+    // nur motes orbiting the crown
+    const spark = mat(0x2a7a33, {emissive:NEON_SOFT, ei:0.85, map:null});
+    c.pulse.push({m:spark, base:0.85, amt:0.5});
+    const sg = new THREE.Group();
+    sg.position.y = base + 6.4;
+    for (let i=0;i<9;i++){
+      const m = box(sg, {w:0.32, h:0.32, d:0.32, material:spark});
+      m.userData.r = 3.4 + (i % 3) * 1.1;
+      m.userData.y = ((i * 7) % 5) * 1.1 - 1.6;
+      m.userData.a = i * 0.7;
+    }
+    parent.add(sg);
+    c.sparks = sg;
+    c.glows.push(glowSprite(parent, {y:base + 5.4, size:15, opacity:0.42}));
+    c.glows.push(glowSprite(parent, {y:base + 2.2, size:13, opacity:0.24}));
   } else {
-    c.glows.push(glowSprite(parent, {y:base + 3.6, size:9, opacity:0.2}));
+    c.glows.push(glowSprite(parent, {y:base + 3.4, size:9, opacity:0.18}));
   }
 }
 
 /* ---------------------------------------------------------------------
    7. Props
    ------------------------------------------------------------------ */
+// Short rattan training baton, held across the hip with a bound grip.
 function buildStick(parent){
   const g = new THREE.Group();
-  box(g, {w:1.0, h:9.2, d:1.0, color:0x8a5f39});
-  box(g, {w:1.25, h:1.0, d:1.25, y:-4.3, color:0x64432a});
-  box(g, {w:1.15, h:0.5, d:1.15, y: 3.6, color:0x9c7248});
-  g.rotation.z = 0.14;
-  g.rotation.x = -0.10;
+  box(g, {w:1.1,  h:7.6, d:1.1,  color:0x8a5f39});
+  box(g, {w:1.35, h:1.2, d:1.35, y:-3.5, color:0x64432a});
+  box(g, {w:1.25, h:1.0, d:1.25, y: 1.6, color:0x3c6b44});
+  box(g, {w:1.2,  h:0.5, d:1.2,  y: 3.2, color:0x9c7248});
+  g.rotation.z = 0.3;
+  g.rotation.x = -0.34;
   parent.add(g);
   return g;
 }
 
-// Keris: wavy blade built from overlapping tapered segments (lok).
+// Keris: wavy blade (lok) from overlapping tapered segments, with a
+// brighter inner core so it reads white-hot at the centre like the art.
 function buildKeris(parent, c, elite){
   const g     = new THREE.Group();
   const lvl   = elite ? 2 : 1;
   const hilt  = mat(elite ? 0x123021 : 0x1b1f1d);
   const blade = traceMat(c, lvl, 'blade');
+  const core  = mat(elite ? 0x9dffa0 : 0x336b34, {emissive:NEON_SOFT, ei: elite ? 1.5 : 0.6, map:null});
+  c.pulse.push({m:core, base: elite ? 1.5 : 0.6, amt: EMIT[lvl].amt});
 
-  box(g, {w:1.4, h:3.2, d:1.4, y:-1.9, rz:0.18, material:hilt});      // hulu
-  box(g, {w:1.7, h:1.0, d:1.7, y:-3.7, material:hilt});
-  box(g, {w:3.8, h:0.9, d:2.0, y: 0.4, material: elite ? blade : hilt}); // ganja
+  box(g, {w:1.5, h:3.3, d:1.5, y:-1.9, rz:0.2, material:hilt});          // hulu
+  box(g, {w:1.8, h:1.0, d:1.8, y:-3.8, material:hilt});
+  box(g, {w:4.2, h:1.0, d:2.2, y: 0.5, material: elite ? blade : hilt}); // ganja
 
   const segs = 8;
   for (let i=0;i<segs;i++){
     const t = i/(segs-1);
-    box(g, {
-      w: 1.6 - t*1.15, h:1.45, d: 0.62 - t*0.24,
-      x: Math.sin(i*0.85) * 0.26,
-      y: 1.5 + i*1.25,
-      rz: Math.sin(i*0.85) * 0.07,
-      material: blade
-    });
+    const w = 2.0 - t*1.45;
+    const x = Math.sin(i*0.85) * 0.3;
+    const y = 1.7 + i*1.3;
+    const rz = Math.sin(i*0.85) * 0.07;
+    box(g, {w:w, h:1.5, d:0.7 - t*0.28, x:x, y:y, rz:rz, material:blade});
+    box(g, {w:w*0.34, h:1.5, d:0.8 - t*0.3, x:x, y:y, rz:rz, material:core});
   }
-  box(g, {w:0.42, h:1.5, d:0.32, y:1.5 + segs*1.25, material:blade});  // tip
+  box(g, {w:0.5, h:1.6, d:0.34, y:1.7 + segs*1.3, material:core});       // tip
 
-  c.glows.push(glowSprite(g, {y:6.0, size: elite ? 8 : 4.5, sizeY: elite ? 17 : 12,
-                              opacity: elite ? 0.48 : 0.18}));
-  g.rotation.z = -0.22;
-  g.rotation.x = -0.12;
+  c.glows.push(glowSprite(g, {y:6.5, size: elite ? 9 : 5, sizeY: elite ? 19 : 13,
+                              opacity: elite ? 0.5 : 0.2}));
+  g.rotation.z = -0.24;
+  g.rotation.x = -0.14;
   parent.add(g);
   return g;
 }
 
 function buildPack(parent){
-  const cloth = mat(0x1f556a);
-  const strap = mat(0x153542);
-  const zBack = -(P.torsoD/2 + 1.8);
-  box(parent, {w:6.2, h:7.2, d:3.0, y:P.torsoY + 0.2, z:zBack, material:cloth});
-  box(parent, {w:6.4, h:1.6, d:3.2, y:P.torsoY + 3.4, z:zBack, material:strap});
-  box(parent, {w:4.2, h:2.4, d:0.9, y:P.torsoY - 1.4, z:zBack - 1.6, material:strap});
-  box(parent, {w:1.2, h:3.2, d:0.7, y:P.torsoY + 4.8, z:zBack - 0.4, material:mat(0xd8c48a)});
-  [-1,1].forEach(function(s){
-    box(parent, {w:0.9, h:8.6, d:0.8, x:s*2.6, y:P.torsoY, z:P.torsoD/2 + PAD/2 + 0.3, material:strap});
+  const shell = mat(0x14181c);
+  const strap = mat(0x1b5d76);
+  const zBack = -(P.torsoD/2 + 1.9);
+  box(parent, {w:6.4, h:7.4, d:3.2, y:P.torsoY + 0.2, z:zBack, material:shell});
+  box(parent, {w:6.6, h:1.5, d:3.4, y:P.torsoY + 3.5, z:zBack, material:strap});
+  box(parent, {w:4.4, h:2.4, d:0.9, y:P.torsoY - 1.5, z:zBack - 1.7, material:mat(0x1c2227)});
+  box(parent, {w:1.2, h:3.3, d:0.7, y:P.torsoY + 5.0, z:zBack - 0.5, material:mat(0xd8c48a)});
+  [-1,1].forEach(function(s){   // shoulder straps coming over the front
+    box(parent, {w:0.8, h:8.8, d:0.7, x:s*2.8, y:P.torsoY, z:P.torsoD/2 + PAD/2 + 0.25, material:strap});
   });
 }
 
 /* ---------------------------------------------------------------------
    8. Character assembly
    ------------------------------------------------------------------ */
+
+// A stepped voxel haircut: jagged crown, fringe and a nape slab.
+function addHair(head, hair, full){
+  const hz = P.headD/2, hx = P.headW/2;
+  box(head, {w:P.headW+0.2, h:P.headH*0.78, d:1.15, y:0.45, z:-(hz + 0.32), material:hair});
+  if (!full){   // under headwear only the nape and sideburns show
+    box(head, {w:P.headW+0.2, h:0.9, d:P.headD+0.2, y:P.headH/2 - 0.3, material:hair});
+    return;
+  }
+  box(head, {w:P.headW+0.26, h:0.7, d:P.headD+0.24, y:P.headH/2 + 0.2, material:hair});
+  [[-2.8,1.5],[-1.4,2.2],[0,1.7],[1.4,2.25],[2.8,1.4]].forEach(function(st){
+    box(head, {w:1.62, h:st[1], d:P.headD+0.22, x:st[0], y:P.headH/2 + st[1]/2 - 0.1, material:hair});
+  });
+  box(head, {w:P.headW+0.26, h:1.4, d:1.0, y:P.headH/2 - 0.75, z:hz + 0.12, material:hair});
+  [-1,1].forEach(function(s){
+    box(head, {w:0.85, h:2.6, d:P.headD+0.18, x:s*(hx + 0.2), y:P.headH/2 - 1.8, material:hair});
+  });
+}
+
 function buildCharacter(cfg){
   const c = {
     cfg:  cfg,
@@ -552,26 +598,40 @@ function buildCharacter(cfg){
     glows: []                  // additive sprites that breathe
   };
   c.slot.add(c.body);
+  c.body.scale.setScalar(cfg.scale);   // rank reads in stature first
 
   const lvl   = cfg.circuit;
   const skin  = mat(cfg.skin);
   const hair  = mat(cfg.hair);
   const shirt = mat(cfg.shirt);
   const trim  = mat(cfg.shirtTrim);
-  const shoe  = mat(cfg.shoe);
-  const pants = mat(cfg.pants !== null && cfg.pants !== undefined ? cfg.pants : 0x111416);
+  const pants = mat(cfg.pants);
   const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEX.check}) : mat(cfg.sarung);
   const circuits  = lvl ? traceMat(c, lvl, 'trace') : null;
+  const plate     = lvl ? traceMat(c, lvl, 'plate') : null;
 
-  /* ---- legs & feet (mirrored) ---- */
+  /* ---- legs, feet and footwear (mirrored) ---- */
   [-1, 1].forEach(function(s){
     const x = s * P.legX;
-    box(c.body, {w:P.footW, h:P.footH, d:P.footD, x:x, y:P.footY, z:P.footZ, material:shoe});
     box(c.body, {w:P.shinW, h:P.shinH, d:P.shinD, x:x, y:P.shinY, material:skin});
     box(c.body, {w:P.thighW, h:P.thighH, d:P.thighD, x:x, y:P.thighY, material:skin});
-    if (cfg.pants){   // trousers for the ranks that wear them
-      box(c.body, {w:P.shinW+PAD, h:P.shinH+0.2, d:P.shinD+PAD, x:x, y:P.shinY+0.3, material:pants});
-      box(c.body, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:x, y:P.thighY, material:pants});
+    box(c.body, {w:P.shinW+PAD, h:P.shinH+0.2, d:P.shinD+PAD, x:x, y:P.shinY+0.3, material:pants});
+    box(c.body, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:x, y:P.thighY, material:pants});
+    if (cfg.pockets){
+      box(c.body, {w:0.35, h:2.4, d:2.0, x:x + s*(P.thighW+PAD)/2, y:P.thighY+1.4, material:trim});
+    }
+    if (cfg.sandals){
+      // bare foot on a wooden sole with a toe strap
+      box(c.body, {w:P.footW, h:1.1, d:P.footD, x:x, y:1.05, z:P.footZ, material:skin});
+      box(c.body, {w:P.footW+0.4, h:0.55, d:P.footD+0.4, x:x, y:0.28, z:P.footZ, material:mat(0xdcae74)});
+      box(c.body, {w:P.footW+0.4, h:0.4,  d:1.1, x:x, y:1.35, z:P.footZ - 1.5, material:mat(0xb98452)});
+    } else {
+      // armoured boot with a glowing toe cap and shin guard
+      box(c.body, {w:P.footW+0.6, h:P.footH+0.8, d:P.footD+0.5, x:x, y:P.footY+0.4, z:P.footZ,
+                   material:mat(0x0a0e0c)});
+      box(c.body, {w:P.footW+0.5, h:0.5, d:1.5, x:x, y:P.footY+1.3, z:P.footZ + 1.4, material:plate});
+      box(c.body, {w:P.shinW+PAD+0.4, h:1.1, d:P.shinD+PAD+0.4, x:x, y:P.shinY-1.9, material:mat(0x0a0e0c)});
+      box(c.body, {w:1.5, h:1.5, d:0.5, x:x, y:P.shinY+1.2, z:(P.shinD+PAD)/2 + 0.2, material:plate});
     }
   });
 
@@ -586,40 +646,22 @@ function buildCharacter(cfg){
   c.body.add(head);
   c.head = head;
 
-  const dark  = mat(0x140f0d, {map:null});
-  const white = mat(0xf4f1e8, {map:null});
+  const eye = mat(0x17110e, {map:null});
   box(head, {w:P.headW, h:P.headH, d:P.headD, material:skin});
-  [-1,1].forEach(function(s){
-    box(head, {w:1.3, h:1.1, d:0.15, x:s*1.65, y:0.55, z:P.headD/2 + 0.08, material:white});
-    box(head, {w:0.6, h:0.8, d:0.2,  x:s*1.75, y:0.5,  z:P.headD/2 + 0.12, material:dark});
-    box(head, {w:1.7, h:0.35,d:0.15, x:s*1.65, y:1.5,  z:P.headD/2 + 0.08, material:hair});
+  [-1,1].forEach(function(s){   // simple voxel face: two dark eyes, a thin smile
+    box(head, {w:1.2, h:1.35, d:0.16, x:s*1.72, y:0.5, z:P.headD/2 + 0.08, material:eye});
   });
-  box(head, {w:P.headW+0.15, h:P.headH*0.82, d:1.2, y:0.4, z:-(P.headD/2 + 0.3), material:hair});
-  if (cfg.headwear === 'none'){
-    box(head, {w:P.headW+0.3, h:1.7, d:P.headD+0.3, y:P.headH/2 + 0.4, material:hair});
-    box(head, {w:P.headW+0.3, h:1.2, d:1.0, y:P.headH/2 - 0.7, z:P.headD/2 + 0.15, material:hair});
-    [-1,1].forEach(function(s){
-      box(head, {w:0.9, h:2.4, d:P.headD+0.2, x:s*(P.headW/2 + 0.2), y:P.headH/2 - 1.6, material:hair});
-    });
-  } else {
-    box(head, {w:P.headW+0.2, h:0.9, d:P.headD+0.2, y:P.headH/2 - 0.25, material:hair});
-  }
-  if (cfg.rank === 5){
-    // Adiguru's beard: a band wrapping the jaw, plus moustache and tuft.
-    const bd = mat(0x1d1713, {map:null});
-    box(head, {w:P.headW+0.18, h:2.4, d:P.headD+0.18, y:-2.25, material:bd});
-    box(head, {w:4.0, h:0.7, d:0.25, y:-1.15, z:P.headD/2 + 0.16, material:bd});
-    box(head, {w:2.2, h:0.45,d:0.22, y:-1.85, z:P.headD/2 + 0.2,  material:mat(0x6f4536, {map:null})});
-    box(head, {w:2.8, h:1.7, d:2.8, y:-4.2, material:bd});
-  } else {
-    box(head, {w:1.9, h:0.3, d:0.15, y:-1.6, z:P.headD/2 + 0.08, material:mat(0x9b6450, {map:null})});
-  }
+  box(head, {w:1.7, h:0.28, d:0.14, y:-1.55, z:P.headD/2 + 0.08, material:mat(0x8f5a46, {map:null})});
+  addHair(head, hair, cfg.headwear === 'none');
 
   /* ---- arms: one pivot group per side, hinged at the shoulder ---- */
   c.arms = [];
   [-1, 1].forEach(function(s){
     const arm = new THREE.Group();
     arm.position.set(s * P.armX, P.shoulderY, 0);
+    // resting pose: hands clasped in front for the youngest rank
+    arm.userData.baseX = cfg.pose === 'clasped' ? -0.12 : 0;
+    arm.userData.baseZ = (cfg.pose === 'clasped' ? 0.23 : 0.03) * -s;
     c.body.add(arm);
     c.arms.push(arm);
     const rel = function(y){ return y - P.shoulderY; };
@@ -634,11 +676,14 @@ function buildCharacter(cfg){
     box(arm, {w:P.lArmW+PAD+0.2, h:0.5, d:P.lArmD+PAD+0.2, y:rel(P.lArmY) - P.lArmH/2, material:trim});
 
     if (lvl){
-      box(arm, {w:P.handW+0.25, h:P.handH+0.25, d:P.handD+0.25, y:rel(P.handY), material:mat(0x0b100d)});
-      box(arm, {w:P.lArmW+PAD+0.3, h:0.9, d:P.lArmD+PAD+0.3, y:rel(P.lArmY)+1.5, material:circuits});
+      // gauntlet, cuff band, upper-arm ring and shoulder plate
+      box(arm, {w:P.handW+0.3, h:P.handH+0.3, d:P.handD+0.3, y:rel(P.handY), material:mat(0x0b100d)});
+      box(arm, {w:P.handW+0.4, h:0.42, d:P.handD+0.4, y:rel(P.handY) + P.handH/2, material:plate});
+      box(arm, {w:P.lArmW+PAD+0.3, h:0.6, d:P.lArmD+PAD+0.3, y:rel(P.lArmY) + 1.9, material:plate});
+      box(arm, {w:P.uArmW+PAD+0.35, h:0.6, d:P.uArmD+PAD+0.35, y:rel(P.uArmY) + 2.6,
+                material: lvl === 2 ? plate : mat(0x131c17)});
       addCircuits(arm, {w:P.uArmW+PAD, h:P.uArmH, d:P.uArmD+PAD, x:0, y:rel(P.uArmY), z:0},
-                  {mat:circuits, count: lvl === 2 ? 2 : 1, thick:0.2,
-                   faces: lvl === 2 ? ['front','right','left'] : ['front']});
+                  {mat:circuits, count:1, thick:0.2, faces: lvl === 2 ? ['front','right','left'] : ['front']});
       addCircuits(arm, {w:P.lArmW+PAD, h:P.lArmH, d:P.lArmD+PAD, x:0, y:rel(P.lArmY), z:0},
                   {mat:circuits, count:1, thick:0.2, faces:['front']});
     }
@@ -647,47 +692,49 @@ function buildCharacter(cfg){
   /* ---- baju melayu (torso layer) ---- */
   box(c.body, {w:P.torsoW+PAD, h:P.torsoH+0.4, d:P.torsoD+PAD, y:P.torsoY-0.1, material:shirt});
   box(c.body, {w:P.torsoW+PAD+0.2, h:1.0, d:P.torsoD+PAD+0.2, y:P.torsoY - P.torsoH/2 - 0.2, material:trim});
-  box(c.body, {w:4.4, h:1.2, d:P.neckD+1.6, y:P.torsoY + P.torsoH/2 + 0.4, material:trim});        // collar
-  box(c.body, {w:1.0, h:P.torsoH*0.7, d:0.35, y:P.torsoY + 0.6, z:P.torsoD/2 + PAD/2 + 0.12, material:trim}); // placket
+  if (cfg.collar){   // white shirt showing at the neckline
+    box(c.body, {w:3.4, h:1.6, d:P.neckD+1.2, y:P.torsoY + P.torsoH/2 - 0.1,
+                 z:0.5, material:mat(cfg.collar)});
+  }
+  box(c.body, {w:4.4, h:1.2, d:P.neckD+1.6, y:P.torsoY + P.torsoH/2 + 0.4, material:trim});   // collar
+  // front opening: a glowing placket on the powered ranks
+  box(c.body, {w:0.9, h:P.torsoH*0.76, d:0.35, y:P.torsoY + 0.4,
+               z:P.torsoD/2 + PAD/2 + 0.12, material: lvl ? plate : trim});
   [-1,1].forEach(function(s){   // pesak side panels + shoulder seam
     box(c.body, {w:0.45, h:P.torsoH+0.4, d:P.torsoD+PAD+0.05, x:s*(P.torsoW+PAD)/2, y:P.torsoY-0.1, material:trim});
     box(c.body, {w:1.3, h:0.6, d:P.torsoD+PAD, x:s*(P.torsoW/2 + 0.9), y:P.torsoY + P.torsoH/2, material:trim});
   });
 
   /* ---- sarung / samping over the hips ---- */
-  const sarungH = cfg.sarungLong ? 11.0 : 6.2;
-  const sarungY = cfg.sarungLong ? 13.2 : 15.4;
+  const sarungH = 6.4, sarungY = 15.3;
   box(c.body, {w:P.pelvisW+PAD+0.6, h:sarungH, d:P.pelvisD+PAD+0.6, y:sarungY, material:sarungMat});
-  const beltMat = lvl ? traceMat(c, lvl, 'belt') : trim;
-  box(c.body, {w:P.pelvisW+PAD+1.0, h:1.0, d:P.pelvisD+PAD+1.0, y:sarungY + sarungH/2 - 0.3, material:beltMat});
-  if (lvl){
-    box(c.body, {w:2.0, h:1.6, d:0.6, y:sarungY + sarungH/2 - 0.3,
-                 z:P.pelvisD/2 + PAD/2 + 0.55, material:beltMat});
+  const beltY = sarungY + sarungH/2 - 0.3;
+  box(c.body, {w:P.pelvisW+PAD+1.0, h: lvl ? 0.8 : 1.1, d:P.pelvisD+PAD+1.0, y:beltY,
+               material: lvl ? plate : trim});
+  if (lvl){   // centre buckle with two smaller side blocks, as in the art
+    [[0, 2.0, 1.6], [-2.6, 1.0, 0.8], [2.6, 1.0, 0.8]].forEach(function(b){
+      box(c.body, {w:b[1], h:b[2], d:0.6, x:b[0], y:beltY,
+                   z:(P.pelvisD+PAD+1.0)/2 + 0.2, material:plate});
+    });
   }
 
-  /* ---- circuitry across torso and legs ---- */
+  /* ---- circuitry across torso and thighs ---- */
   if (lvl){
     addCircuits(c.body, {w:P.torsoW+PAD, h:P.torsoH+0.4, d:P.torsoD+PAD, x:0, y:P.torsoY-0.1, z:0},
-                {mat:circuits, count: lvl === 2 ? 3 : 2, thick:0.24});
+                {mat:circuits, count: lvl === 2 ? 2 : 1, thick:0.26});
     [-1,1].forEach(function(s){
       addCircuits(c.body, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:s*P.legX, y:P.thighY, z:0},
-                  {mat:circuits, count: lvl === 2 ? 2 : 1, thick:0.2,
-                   faces: s > 0 ? ['front','right'] : ['front','left']});
-      addCircuits(c.body, {w:P.shinW+PAD, h:P.shinH, d:P.shinD+PAD, x:s*P.legX, y:P.shinY+0.3, z:0},
-                  {mat:circuits, count:1, thick:0.2, faces:['front']});
-      // boots
-      box(c.body, {w:P.footW+0.6, h:P.footH+0.5, d:P.footD+0.5, x:s*P.legX, y:P.footY+0.2, z:P.footZ,
-                   material:mat(0x0a0e0c)});
-      box(c.body, {w:P.footW+0.5, h:0.45, d:P.footD+0.4, x:s*P.legX, y:P.footY+0.95, z:P.footZ, material:circuits});
-      box(c.body, {w:P.shinW+PAD+0.3, h:0.8, d:P.shinD+PAD+0.3, x:s*P.legX, y:P.shinY-1.7, material:circuits});
+                  {mat:circuits, count:1, thick:0.2, faces: s > 0 ? ['front','right'] : ['front','left']});
+      // thigh plate
+      box(c.body, {w:P.thighW+PAD+0.3, h:0.7, d:P.thighD+PAD+0.3, x:s*P.legX, y:P.thighY - 2.5,
+                   material:plate});
     });
-    // chest core
-    box(c.body, {w:1.8, h:1.8, d:0.5, y:P.torsoY + 2.0, z:P.torsoD/2 + PAD/2 + 0.15, material:circuits});
+    box(c.body, {w:1.6, h:1.6, d:0.5, y:P.torsoY + 2.5, z:P.torsoD/2 + PAD/2 + 0.16, material:plate});
     if (lvl === 2){
-      c.glows.push(glowSprite(c.body, {y:P.torsoY, size:22, opacity:0.26}));
-      c.glows.push(glowSprite(c.body, {y:8,        size:18, opacity:0.16}));
+      c.glows.push(glowSprite(c.body, {y:P.torsoY, size:22, opacity:0.24}));
+      c.glows.push(glowSprite(c.body, {y:8,        size:18, opacity:0.15}));
     } else {
-      c.glows.push(glowSprite(c.body, {y:P.torsoY, size:14, opacity:0.11}));
+      c.glows.push(glowSprite(c.body, {y:P.torsoY, size:14, opacity:0.1}));
     }
   }
 
@@ -700,13 +747,13 @@ function buildCharacter(cfg){
   if (cfg.pack) buildPack(c.body);
   const rightArm = c.arms[1];
   if (cfg.prop === 'stick'){
-    buildStick(rightArm).position.set(1.4, P.handY - P.shoulderY - 0.4, 2.2);
+    buildStick(rightArm).position.set(1.5, P.handY - P.shoulderY + 0.2, 2.3);
   } else if (cfg.prop === 'keris' || cfg.prop === 'keris-elite'){
     buildKeris(rightArm, c, cfg.prop === 'keris-elite')
-      .position.set(2.0, P.handY - P.shoulderY + 0.3, 2.4);
+      .position.set(2.1, P.handY - P.shoulderY + 0.4, 2.5);
   }
 
-  /* ---- ground pad, ring and label (not bobbed) ---- */
+  /* ---- ground pad, ring and label (not scaled or bobbed) ---- */
   const pad = new THREE.Mesh(
     new THREE.CircleGeometry(7.6, 32),
     new THREE.MeshBasicMaterial({color: cfg.glow ? NEON : 0x1c6e38, transparent:true,
@@ -734,8 +781,8 @@ function buildCharacter(cfg){
   const picker = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({
     transparent:true, opacity:0, depthWrite:false
   }));
-  picker.scale.set(16, 44, 16);
-  picker.position.y = 21;
+  picker.scale.set(16, 48, 16);
+  picker.position.y = 23;
   picker.userData.char = c;
   c.slot.add(picker);
   c.picker = picker;
@@ -804,8 +851,8 @@ for (let i=0;i<MOTES;i++){
 }
 moteGeo.setAttribute('position', new THREE.BufferAttribute(mp, 3));
 scene.add(new THREE.Points(moteGeo, new THREE.PointsMaterial({
-  color:NEON_SOFT, size:0.45, transparent:true, opacity:0.5, depthWrite:false,
-  blending:THREE.AdditiveBlending
+  color:NEON_SOFT, size:2.2, sizeAttenuation:false, transparent:true, opacity:0.45,
+  depthWrite:false, blending:THREE.AdditiveBlending
 })));
 
 /* ---------------------------------------------------------------------
@@ -817,8 +864,9 @@ const desired = {pos:HOME.pos.clone(), tgt:HOME.tgt.clone()};
 
 function focusChar(c){
   focused = c;
-  desired.pos.set(c.x + 7, 29, 68);
-  desired.tgt.set(c.x, 22.5, 0);
+  const s = c.cfg.scale;
+  desired.pos.set(c.x + 7*s, 4 + 25*s, 8 + 60*s);
+  desired.tgt.set(c.x, 2 + 19*s, 0);
   startMove();
 }
 function focusHome(){
@@ -938,10 +986,11 @@ function animate(){
     c.body.rotation.y = Math.sin(t*0.35 + ph) * 0.06;
 
     /* breathing arms, glancing head */
-    c.arms[0].rotation.x = Math.sin(t*1.25 + ph) * 0.055;
-    c.arms[1].rotation.x = Math.sin(t*1.25 + ph + Math.PI) * 0.045;
-    c.arms[0].rotation.z =  0.03 + Math.sin(t*0.9 + ph) * 0.02;
-    c.arms[1].rotation.z = -0.03 - Math.sin(t*0.9 + ph) * 0.02;
+    c.arms.forEach(function(arm, i){
+      const flip = i ? Math.PI : 0;
+      arm.rotation.x = arm.userData.baseX + Math.sin(t*1.25 + ph + flip) * 0.05;
+      arm.rotation.z = arm.userData.baseZ + Math.sin(t*0.9 + ph) * 0.02 * (i ? -1 : 1);
+    });
     c.head.rotation.y = Math.sin(t*0.45 + ph) * 0.13;
     c.head.rotation.x = Math.sin(t*0.6  + ph) * 0.03;
 
@@ -964,8 +1013,15 @@ function animate(){
       c.ring.material.opacity = c.ringBase * (1 + 0.35*w);
     }
 
-    /* the Adiguru crystal turns slowly overhead */
-    if (c.crystal) c.crystal.rotation.y = t * 0.6;
+    /* nur motes orbit the Adiguru's crown */
+    if (c.sparks){
+      c.sparks.children.forEach(function(m){
+        const a = t*0.55 + m.userData.a;
+        m.position.set(Math.cos(a) * m.userData.r,
+                       m.userData.y + Math.sin(t*1.5 + m.userData.a) * 0.7,
+                       Math.sin(a) * m.userData.r);
+      });
+    }
 
     /* dim the rest of the cast so the selected rank reads clearly */
     const want = (!focused || focused === c) ? 1 : 0.3;
