@@ -77,10 +77,17 @@ Each figure is assembled in four passes inside `buildCharacter()`:
 
 1. **Body** — head, neck, torso, upper/lower arms, hands, pelvis, thighs,
    shins and feet, all boxes positioned in absolute world-y so parts can be
-   authored independently.
+   authored independently. The **face is painted, not modelled**: each eye in
+   the art is an L — a horizontal brow bar with a short descender on its inner
+   edge — and the smile is a smooth curve, neither of which can be built from
+   boxes. `faceTexture()` draws them on a 16×16 canvas which is mapped to the
+   head's `+z` face alone, via `BoxGeometry`'s six-material array
+   (`[+x, -x, +y, -y, +z, -z]`). Ears are real geometry, standing proud of the
+   head as they do in the art.
 2. **Clothing** — separate box layers inflated by `PAD` (0.5 units) over the
    body: sleeves, baju torso with collar, placket and pesak panels, then the
-   sarung or samping over the hips.
+   sarung or samping over the hips, knee-length on the barefoot ranks. Ranks 1
+   and 3 get the small placket buttons the art shows, gold and neon green.
 3. **Headwear** — `buildSongkok()` and `buildTanijak()` add boxes above the
    head. The tanijak is a crown band plus flat plates fanned upward at rising
    angles, finished with the upswept "Dendam Tak Sudah" peak.
@@ -90,7 +97,31 @@ Each figure is assembled in four passes inside `buildCharacter()`:
    reloads.
 
 Arms hang from their own pivot groups at the shoulder, so props (the stick and
-the keris) attach to the arm and sway with it.
+the keris) attach to the arm and sway with it. Rank 1 stands with its hands
+clasped, swung forward rather than inward so they rest in front of the sarung
+instead of intersecting it.
+
+## Why it stops looking blocky
+
+Close-ups of the concept art show every surface broken into small cubes, each
+with a light chamfer along its top and left edge and a darker seam along the
+bottom and right. That bevel, not the polygon count, is most of what separates
+the art from a model made of a few big boxes — so `voxelTile()` paints it.
+Cells sit below the base tone so the chamfer has room to lift to full, since a
+multiply map can darken but never brighten past the material colour.
+
+`voxMap(repeat)` caches one texture object per repeat value, which keeps a
+roughly 1-unit cell across parts of very different sizes without needing a
+texture per box: `VOX_BODY` for the torso, head and sarung, `VOX_LIMB` for arms,
+shins, feet and small trim.
+
+The haircut is the one place that earns real extra geometry — a 6×5 grid of
+columns at varying heights, plus a fringe that drops lower at the temples — so
+individual cubes step out of the silhouette the way they do in the art.
+
+**Still different from the art:** the reference is a true fine voxel model, so
+its limb edges step where these big boxes stay straight, and it has soft
+ambient occlusion in the crevices that this renderer has no equivalent for.
 
 ## Animation
 

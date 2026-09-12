@@ -181,7 +181,7 @@ const SPACING = 20;     // distance between characters
    ------------------------------------------------------------------ */
 const CHARS = [
   {
-    rank:1, short:'Dagang', name:'Anak Dagang', title:'Pedagang Muda', amanah:24,
+    buttons:0xf0c02a, rank:1, short:'Dagang', name:'Anak Dagang', title:'Pedagang Muda', amanah:24,
     desc:'Baju melayu kain kasar, samping putih, berkaki selipar. Belum ada nur — adab masih di peringkat niat.',
     scale:0.77, pose:'clasped',
     skin:0xf0aa6d, hair:0x222221,
@@ -190,7 +190,7 @@ const CHARS = [
     headwear:'none', prop:null, pack:false, circuit:0, glow:0
   },
   {
-    rank:2, short:'Perantau', name:'Perantau', title:'Pengembara Ilmu', amanah:45,
+    buttons:null, rank:2, short:'Perantau', name:'Perantau', title:'Pengembara Ilmu', amanah:45,
     desc:'Baju biru perantau, seluar jean gelap, beg sandar penuh catatan. Mula mengumpul ilmu di luar kampung.',
     scale:0.88, pose:'rest',
     skin:0xf0aa6d, hair:0x222221,
@@ -199,7 +199,7 @@ const CHARS = [
     headwear:'none', prop:null, pack:true, circuit:0, glow:0
   },
   {
-    rank:3, short:'Pendekar', name:'Pendekar Muda', title:'Murid Gelanggang', amanah:63,
+    buttons:0x6ddb3a, rank:3, short:'Pendekar', name:'Pendekar Muda', title:'Murid Gelanggang', amanah:63,
     desc:'Baju melayu hitam, songkok, samping berpetak. Memegang kayu latihan — silat bermula dengan hormat.',
     scale:0.92, pose:'rest',
     skin:0xf0aa6d, hair:0x222221,
@@ -208,7 +208,7 @@ const CHARS = [
     headwear:'songkok', prop:'stick', pack:false, circuit:0, glow:0
   },
   {
-    rank:4, short:'Pahlawan', name:'Pahlawan Siber', title:'Panglima Siber', amanah:84,
+    buttons:null, rank:4, short:'Pahlawan', name:'Pahlawan Siber', title:'Panglima Siber', amanah:84,
     desc:'Litar neon halus menyala pada baju, plat nur di tali pinggang dan but. Tanijak hitam berdenyut perlahan, keris siber di tangan.',
     scale:1.00, pose:'rest',
     skin:0xf0aa6d, hair:0x222221,
@@ -217,7 +217,7 @@ const CHARS = [
     headwear:'tanijak', prop:'keris', pack:false, circuit:1, glow:0.5
   },
   {
-    rank:5, short:'Adiguru', name:'Adiguru', title:'Guru Silat • Al-Amin', amanah:98,
+    buttons:null, rank:5, short:'Adiguru', name:'Adiguru', title:'Guru Silat • Al-Amin', amanah:98,
     desc:'Litar nur penuh menyala di seluruh tubuh. Tanijak Dendam Tak Sudah bercahaya dengan zarah nur, keris nur di tangan.',
     scale:1.18, pose:'rest',
     skin:0xf0aa6d, hair:0x222221,
@@ -263,21 +263,36 @@ controls.autoRotateSpeed = 1.1;
    4. Shared helpers: textures, materials, boxes, sprites
    ------------------------------------------------------------------ */
 
-// Faint per-pixel grain so flat box faces still read as voxel fabric.
-function grainTexture(){
-  const s = 32, c = document.createElement('canvas');
+/**
+ * A tile of beveled voxel cells. Close-ups of the concept art show every
+ * surface broken into small cubes, each with a light chamfer along its top
+ * and left edge and a dark seam along the bottom and right, plus a little
+ * tint variation from cell to cell. That bevel is most of what stops the
+ * model reading as a few big boxes, so it is painted rather than modelled.
+ *
+ * Cells sit below the base tone so the chamfer has room to lift to full --
+ * a multiply map can darken but never brighten past the material colour.
+ */
+function voxelTile(){
+  const cells = 4, px = 24, s = cells * px;
+  const c = document.createElement('canvas');
   c.width = c.height = s;
   const g = c.getContext('2d');
-  g.fillStyle = '#ffffff'; g.fillRect(0,0,s,s);
-  for (let i=0;i<s*s*0.35;i++){
-    const v = 228 + Math.floor(Math.random()*28);
-    g.fillStyle = 'rgb('+v+','+v+','+v+')';
-    g.fillRect(Math.floor(Math.random()*s), Math.floor(Math.random()*s), 1, 1);
+  for (let y=0;y<cells;y++){
+    for (let x=0;x<cells;x++){
+      const v = 222 + Math.floor(Math.random()*14);          // per-cell tint
+      g.fillStyle = 'rgb('+v+','+v+','+v+')';
+      g.fillRect(x*px, y*px, px, px);
+      g.fillStyle = 'rgba(255,255,255,.62)';                 // chamfer highlight
+      g.fillRect(x*px, y*px, px, 2);
+      g.fillRect(x*px, y*px, 2, px);
+      g.fillStyle = 'rgba(0,0,0,.12)';                       // seam
+      g.fillRect(x*px, (y+1)*px - 2, px, 2);
+      g.fillRect((x+1)*px - 2, y*px, 2, px);
+    }
   }
   const t = new THREE.CanvasTexture(c);
-  t.magFilter = t.minFilter = THREE.NearestFilter;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(2,2);
   return t;
 }
 
@@ -326,15 +341,72 @@ function shadowTexture(){
   return new THREE.CanvasTexture(c);
 }
 
-const TEX = {grain:grainTexture(), check:checkTexture(), glow:glowTexture(),
+const TEX = {vox:voxelTile(), check:checkTexture(), glow:glowTexture(),
              shadow:shadowTexture()};
+
+/* One texture object per repeat value, so a roughly 1-unit voxel cell holds
+   across parts of different sizes without needing a texture per box. */
+const voxRepeats = {};
+function voxMap(rep){
+  const k = rep.toFixed(2);
+  if (!voxRepeats[k]){
+    const t = TEX.vox.clone();
+    t.needsUpdate = true;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(rep, rep);
+    voxRepeats[k] = t;
+  }
+  return voxRepeats[k];
+}
+const VOX_BODY = 1.8;   // torso, head, sarung
+const VOX_LIMB = 0.7;   // arms, shins, feet, small trim
 const BOX = new THREE.BoxGeometry(1,1,1);   // one geometry, scaled per part
+
+/**
+ * The face, drawn onto the head's +z face. In the concept art each eye is an
+ * L -- a horizontal brow bar with a short descender on its inner edge -- and
+ * the smile is a smooth curve. Neither is buildable from boxes, which is why
+ * earlier passes read blank and blocky next to the art.
+ */
+function faceTexture(skinHex){
+  const cell = 24, n = 16, s = cell * n;       // a 16x16 voxel face
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d');
+
+  g.fillStyle = '#' + ('000000' + skinHex.toString(16)).slice(-6);
+  g.fillRect(0, 0, s, s);
+  for (let y=0;y<n;y++) for (let x=0;x<n;x++){     // same beveled cells as elsewhere
+    g.fillStyle = 'rgba(255,255,255,' + (0.05 + Math.random()*0.05).toFixed(3) + ')';
+    g.fillRect(x*cell, y*cell, cell, 2);
+    g.fillRect(x*cell, y*cell, 2, cell);
+    g.fillStyle = 'rgba(0,0,0,.05)';
+    g.fillRect(x*cell, (y+1)*cell - 2, cell, 2);
+  }
+
+  const px = function(x, y, w, h){ g.fillRect(x*cell, y*cell, w*cell, h*cell); };
+  g.fillStyle = '#171310';
+  px(2.5, 5, 4, 1.1);   px(5.4, 5, 1.1, 3.2);     // left brow + inner descender
+  px(9.4, 5, 4, 1.1);   px(9.4, 5, 1.1, 3.2);     // right, mirrored
+
+  g.strokeStyle = '#6b4033';                       // the smile, one smooth stroke
+  g.lineWidth = cell * 0.42;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(5.9*cell, 10.4*cell);
+  g.quadraticCurveTo(8*cell, 12.0*cell, 10.1*cell, 10.4*cell);
+  g.stroke();
+
+  const t = new THREE.CanvasTexture(c);
+  t.anisotropy = 4;
+  return t;
+}
 
 function mat(color, opts){
   opts = opts || {};
   return new THREE.MeshLambertMaterial({
     color: color,
-    map: opts.map === null ? null : (opts.map || TEX.grain),
+    map: opts.map === null ? null : (opts.map || voxMap(opts.vox || VOX_BODY)),
     emissive: opts.emissive !== undefined ? opts.emissive : 0x000000,
     emissiveIntensity: opts.ei !== undefined ? opts.ei : 1
   });
@@ -623,21 +695,49 @@ function buildPack(parent){
    8. Character assembly
    ------------------------------------------------------------------ */
 
-// A stepped voxel haircut: jagged crown, fringe and a nape slab.
+/**
+ * The haircut, as a grid of small cubes rather than a few slabs. The art's
+ * hair is a fine voxel mass with individual cubes stepping out of the
+ * silhouette, and that detail is much of what separates it from a blocky
+ * model, so it earns the extra boxes.
+ */
 function addHair(head, hair, full){
   const hz = P.headD/2, hx = P.headW/2;
-  box(head, {w:P.headW+0.2, h:P.headH*0.78, d:1.15, y:0.45, z:-(hz + 0.32), material:hair});
+  const cell = (P.headW + 0.3) / 6;           // ~1.4 units, matching the art
+
+  box(head, {w:P.headW+0.24, h:P.headH*0.74, d:1.1, y:0.5, z:-(hz + 0.3), material:hair});
   if (!full){   // under headwear only the nape and sideburns show
-    box(head, {w:P.headW+0.2, h:0.9, d:P.headD+0.2, y:P.headH/2 - 0.3, material:hair});
+    box(head, {w:P.headW+0.24, h:0.9, d:P.headD+0.24, y:P.headH/2 - 0.3, material:hair});
+    [-1,1].forEach(function(s){
+      box(head, {w:0.5, h:2.2, d:P.headD+0.2, x:s*(hx + 0.36), y:P.headH/2 - 1.9, material:hair});
+    });
     return;
   }
-  box(head, {w:P.headW+0.26, h:0.7, d:P.headD+0.24, y:P.headH/2 + 0.2, material:hair});
-  [[-3.2,1.6],[-1.6,2.3],[0,1.8],[1.6,2.35],[3.2,1.5]].forEach(function(st){
-    box(head, {w:1.85, h:st[1], d:P.headD+0.22, x:st[0], y:P.headH/2 + st[1]/2 - 0.1, material:hair});
+
+  // crown: 6x5 columns of varying height, so the top edge steps irregularly
+  const HEIGHT = [
+    [1,2,2,3,2,1],
+    [1,2,3,3,2,2],
+    [1,2,2,3,3,2],
+    [1,1,2,2,2,1],
+    [1,1,1,2,1,1]
+  ];
+  for (let r=0;r<HEIGHT.length;r++){
+    for (let q=0;q<HEIGHT[r].length;q++){
+      const h = 0.55 + HEIGHT[r][q] * 0.62;
+      box(head, {w:cell + 0.06, h:h, d:cell + 0.06,
+                 x:(q - 2.5) * cell, y:P.headH/2 - 0.25 + h/2, z:(2 - r) * cell - 0.4,
+                 material:hair});
+    }
+  }
+  // fringe over the forehead, dropping lower at the temples
+  [-2.5,-1.5,-0.5,0.5,1.5,2.5].forEach(function(q, i){
+    const drop = (i === 0 || i === 5) ? 2.3 : (i === 1 || i === 4) ? 1.5 : 1.0;
+    box(head, {w:cell + 0.06, h:drop, d:1.0,
+               x:q * cell, y:P.headH/2 - drop/2 + 0.1, z:hz + 0.1, material:hair});
   });
-  box(head, {w:P.headW+0.26, h:1.4, d:1.0, y:P.headH/2 - 0.75, z:hz + 0.12, material:hair});
-  [-1,1].forEach(function(s){
-    box(head, {w:0.85, h:2.6, d:P.headD+0.18, x:s*(hx + 0.2), y:P.headH/2 - 1.8, material:hair});
+  [-1,1].forEach(function(s){   // sideburns
+    box(head, {w:0.55, h:2.8, d:P.headD+0.2, x:s*(hx + 0.38), y:P.headH/2 - 2.0, material:hair});
   });
 }
 
@@ -654,10 +754,13 @@ function buildCharacter(cfg){
 
   const lvl   = cfg.circuit;
   const skin  = mat(cfg.skin);
-  const hair  = mat(cfg.hair);
+  const skinL = mat(cfg.skin,  {vox:VOX_LIMB});
+  const hair  = mat(cfg.hair,  {vox:VOX_LIMB});
   const shirt = mat(cfg.shirt);
-  const trim  = mat(cfg.shirtTrim);
+  const shirtL= mat(cfg.shirt, {vox:VOX_LIMB});
+  const trim  = mat(cfg.shirtTrim, {vox:VOX_LIMB});
   const pants = mat(cfg.pants);
+  const pantsL= mat(cfg.pants, {vox:VOX_LIMB});
   const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEX.check})
                   : cfg.sarung === null ? null : mat(cfg.sarung);
   const circuits  = lvl ? traceMat(c, lvl, 'trace') : null;
@@ -666,18 +769,20 @@ function buildCharacter(cfg){
   /* ---- legs, feet and footwear (mirrored) ---- */
   [-1, 1].forEach(function(s){
     const x = s * P.legX;
-    box(c.body, {w:P.shinW, h:P.shinH, d:P.shinD, x:x, y:P.shinY, material:skin});
-    box(c.body, {w:P.thighW, h:P.thighH, d:P.thighD, x:x, y:P.thighY, material:skin});
-    box(c.body, {w:P.shinW+PAD, h:P.shinH+0.2, d:P.shinD+PAD, x:x, y:P.shinY+0.3, material:pants});
-    box(c.body, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:x, y:P.thighY, material:pants});
+    box(c.body, {w:P.shinW, h:P.shinH, d:P.shinD, x:x, y:P.shinY, material:skinL});
+    box(c.body, {w:P.thighW, h:P.thighH, d:P.thighD, x:x, y:P.thighY, material:skinL});
+    box(c.body, {w:P.shinW+PAD, h:P.shinH+0.2, d:P.shinD+PAD, x:x, y:P.shinY+0.3, material:pantsL});
+    box(c.body, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:x, y:P.thighY, material:pantsL});
     if (cfg.pockets){
       box(c.body, {w:0.35, h:2.4, d:2.0, x:x + s*(P.thighW+PAD)/2, y:P.thighY+1.4, material:trim});
     }
     if (cfg.sandals){
       // bare foot on a wooden sole with a toe strap
-      box(c.body, {w:P.footW, h:1.1, d:P.footD, x:x, y:1.05, z:P.footZ, material:skin});
-      box(c.body, {w:P.footW+0.4, h:0.55, d:P.footD+0.4, x:x, y:0.28, z:P.footZ, material:mat(0xdcae74)});
-      box(c.body, {w:P.footW+0.4, h:0.4,  d:1.1, x:x, y:1.35, z:P.footZ - 1.5, material:mat(0xb98452)});
+      box(c.body, {w:P.footW, h:1.1, d:P.footD, x:x, y:1.05, z:P.footZ, material:skinL});
+      box(c.body, {w:P.footW+0.4, h:0.55, d:P.footD+0.4, x:x, y:0.28, z:P.footZ,
+                   material:mat(0xdcae74, {vox:VOX_LIMB})});
+      box(c.body, {w:P.footW+0.4, h:0.4,  d:1.1, x:x, y:1.35, z:P.footZ - 1.5,
+                   material:mat(0xb98452, {vox:VOX_LIMB})});
     } else {
       // armoured boot with a glowing toe cap and shin guard
       box(c.body, {w:P.footW+0.6, h:P.footH+0.8, d:P.footD+0.5, x:x, y:P.footY+0.4, z:P.footZ,
@@ -699,12 +804,13 @@ function buildCharacter(cfg){
   c.body.add(head);
   c.head = head;
 
-  const eye = mat(0x17110e, {map:null});
-  box(head, {w:P.headW, h:P.headH, d:P.headD, material:skin});
-  [-1,1].forEach(function(s){   // simple voxel face: two dark eyes, a thin smile
-    box(head, {w:1.35, h:1.5, d:0.16, x:s*1.95, y:0.6, z:P.headD/2 + 0.08, material:eye});
+  // BoxGeometry takes materials as [+x, -x, +y, -y, +z, -z]; only +z is the face
+  const faceMat = new THREE.MeshLambertMaterial({color:0xffffff, map:faceTexture(cfg.skin)});
+  box(head, {w:P.headW, h:P.headH, d:P.headD,
+             material:[skin, skin, skin, skin, faceMat, skin]});
+  [-1,1].forEach(function(s){   // ears stand proud of the head, as in the art
+    box(head, {w:0.5, h:2.0, d:1.5, x:s*(P.headW/2 + 0.22), y:-0.2, z:-0.3, material:skinL});
   });
-  box(head, {w:1.9, h:0.3, d:0.14, y:-1.75, z:P.headD/2 + 0.08, material:mat(0x8f5a46, {map:null})});
   addHair(head, hair, cfg.headwear === 'none');
 
   /* ---- arms: one pivot group per side, hinged at the shoulder ---- */
@@ -713,19 +819,19 @@ function buildCharacter(cfg){
     const arm = new THREE.Group();
     arm.position.set(s * P.armX, P.shoulderY, 0);
     // resting pose: hands clasped in front for the youngest rank
-    arm.userData.baseX = cfg.pose === 'clasped' ? -0.12 : 0;
-    arm.userData.baseZ = (cfg.pose === 'clasped' ? 0.23 : 0.03) * -s;
+    arm.userData.baseX = cfg.pose === 'clasped' ? -0.42 : 0;
+    arm.userData.baseZ = (cfg.pose === 'clasped' ? 0.20 : 0.03) * -s;
     c.body.add(arm);
     c.arms.push(arm);
     const rel = function(y){ return y - P.shoulderY; };
 
-    box(arm, {w:P.uArmW, h:P.uArmH, d:P.uArmD, y:rel(P.uArmY), material:skin});
-    box(arm, {w:P.lArmW, h:P.lArmH, d:P.lArmD, y:rel(P.lArmY), material:skin});
-    box(arm, {w:P.handW, h:P.handH, d:P.handD, y:rel(P.handY), material:skin});
+    box(arm, {w:P.uArmW, h:P.uArmH, d:P.uArmD, y:rel(P.uArmY), material:skinL});
+    box(arm, {w:P.lArmW, h:P.lArmH, d:P.lArmD, y:rel(P.lArmY), material:skinL});
+    box(arm, {w:P.handW, h:P.handH, d:P.handD, y:rel(P.handY), material:skinL});
 
     // sleeve of the baju melayu
-    box(arm, {w:P.uArmW+PAD, h:P.uArmH+0.3, d:P.uArmD+PAD, y:rel(P.uArmY)-0.1, material:shirt});
-    box(arm, {w:P.lArmW+PAD, h:P.lArmH,     d:P.lArmD+PAD, y:rel(P.lArmY),     material:shirt});
+    box(arm, {w:P.uArmW+PAD, h:P.uArmH+0.3, d:P.uArmD+PAD, y:rel(P.uArmY)-0.1, material:shirtL});
+    box(arm, {w:P.lArmW+PAD, h:P.lArmH,     d:P.lArmD+PAD, y:rel(P.lArmY),     material:shirtL});
     box(arm, {w:P.lArmW+PAD+0.2, h:0.5, d:P.lArmD+PAD+0.2, y:rel(P.lArmY) - P.lArmH/2, material:trim});
 
     if (lvl){
@@ -752,8 +858,15 @@ function buildCharacter(cfg){
   }
   box(c.body, {w:3.7, h:1.2, d:P.neckD+1.6, y:P.torsoY + P.torsoH/2 + 0.4, material:trim});   // collar
   // front opening: a glowing placket on the powered ranks
+  const placketZ = P.torsoD/2 + PAD/2 + 0.12;
   box(c.body, {w:0.9, h:P.torsoH*0.76, d:0.35, y:P.torsoY + 0.4,
-               z:P.torsoD/2 + PAD/2 + 0.12, material: lvl ? plate : trim});
+               z:placketZ, material: lvl ? plate : trim});
+  if (cfg.buttons){
+    const btn = mat(cfg.buttons, {vox:VOX_LIMB});
+    [1.5, 0.25].forEach(function(dy){
+      box(c.body, {w:0.6, h:0.6, d:0.3, y:P.torsoY + dy, z:placketZ + 0.22, material:btn});
+    });
+  }
   [-1,1].forEach(function(s){   // pesak side panels + shoulder seam
     box(c.body, {w:0.45, h:P.torsoH+0.4, d:P.torsoD+PAD+0.05, x:s*(P.torsoW+PAD)/2, y:P.torsoY-0.1, material:trim});
     box(c.body, {w:1.2, h:0.6, d:P.torsoD+PAD, x:s*(P.torsoW/2 + 0.75), y:P.torsoY + P.torsoH/2, material:trim});
