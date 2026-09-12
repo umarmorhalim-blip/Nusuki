@@ -103,25 +103,41 @@ instead of intersecting it.
 
 ## Why it stops looking blocky
 
-Close-ups of the concept art show every surface broken into small cubes, each
-with a light chamfer along its top and left edge and a darker seam along the
-bottom and right. That bevel, not the polygon count, is most of what separates
-the art from a model made of a few big boxes — so `voxelTile()` paints it.
-Cells sit below the base tone so the chamfer has room to lift to full, since a
-multiply map can darken but never brighten past the material colour.
+The cubes in the concept art have their **edges cut, not squared off**, and
+that chamfer — not polygon count — is most of what keeps the art from reading
+as a stack of hard boxes. A scaled unit cube cannot carry it: scaling a baked
+bevel stretches it into a wedge. So `chamferBox(w, h, d)` generates the shape
+per size and caches it — 6 inset face quads, 12 chamfer quads along the edges,
+8 corner triangles, 44 triangles a box. `BEVEL` is an absolute world width, so
+a hand and a torso get the same cut.
 
-`voxMap(repeat)` caches one texture object per repeat value, which keeps a
-roughly 1-unit cell across parts of very different sizes without needing a
-texture per box: `VOX_BODY` for the torso, head and sarung, `VOX_LIMB` for arms,
-shins, feet and small trim.
+Winding is settled by testing each triangle's normal against its centroid,
+which works because the shape is convex and centred on the origin; that saves
+hand-ordering 44 triangles correctly.
 
-The haircut is the one place that earns real extra geometry — a 6×5 grid of
-columns at varying heights, plus a fringe that drops lower at the temples — so
-individual cubes step out of the silhouette the way they do in the art.
+**UVs are world-space.** Each vertex's position is projected onto the plane
+perpendicular to its face's dominant axis and divided by the tile's world size.
+One voxel cell is then the same size on a hand as on a torso, with no per-part
+texture repeat to manage — `CELL` sets it directly. The samping's check weave
+rides the same UVs, with `repeat` setting its square size.
+
+The other half is shading: `voxelTile()` paints each cell like a slightly
+inflated cube, bright at the centre and falling off to a darker rim, with a
+crisp seam between cells. Values stay at or below full brightness because a
+multiply map can darken but never lift past the material colour.
+
+The haircut earns real extra geometry — a 4×4 grid of chunky columns at varying
+heights plus a fringe that drops at the temples — so individual cubes step out
+of the silhouette. An earlier 6×5 grid of small cubes read as fuzz rather than
+as the art's chunky voxel mass.
+
+The head is the one mesh with two materials: `chamferBox` puts its `+z` face in
+its own group, with 0..1 UVs, so the painted portrait rides there alone.
 
 **Still different from the art:** the reference is a true fine voxel model, so
-its limb edges step where these big boxes stay straight, and it has soft
-ambient occlusion in the crevices that this renderer has no equivalent for.
+its limbs are built from many small cubes where these are single chamfered
+boxes, and it has soft ambient occlusion in the crevices that this renderer has
+no equivalent for.
 
 ## Animation
 

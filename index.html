@@ -263,36 +263,47 @@ controls.autoRotateSpeed = 1.1;
    4. Shared helpers: textures, materials, boxes, sprites
    ------------------------------------------------------------------ */
 
+/* Voxel scale. BEVEL is the chamfer cut from every cube edge; CELL is how
+   wide one painted voxel cell is in world units. Both are absolute, so a
+   hand and a torso carry the same cube size. */
+const BEVEL  = 0.22;
+const CELL   = 1.05;
+const TILE   = 4;                // cells per texture tile
+const TILE_W = CELL * TILE;
+
 /**
- * A tile of beveled voxel cells. Close-ups of the concept art show every
- * surface broken into small cubes, each with a light chamfer along its top
- * and left edge and a dark seam along the bottom and right, plus a little
- * tint variation from cell to cell. That bevel is most of what stops the
- * model reading as a few big boxes, so it is painted rather than modelled.
+ * A tile of voxel cells, each shaded like a slightly inflated cube: bright
+ * at the centre, falling off to a darker rim, with a crisp seam between
+ * cells. Together with the geometry chamfer this is what reads as "made of
+ * many small cubes" rather than "one big box with lines drawn on it".
  *
- * Cells sit below the base tone so the chamfer has room to lift to full --
- * a multiply map can darken but never brighten past the material colour.
+ * Values stay at or below full brightness because a multiply map can darken
+ * but never lift past the material colour.
  */
 function voxelTile(){
-  const cells = 4, px = 24, s = cells * px;
+  const cells = TILE, px = 40, s = cells * px;
   const c = document.createElement('canvas');
   c.width = c.height = s;
   const g = c.getContext('2d');
   for (let y=0;y<cells;y++){
     for (let x=0;x<cells;x++){
-      const v = 222 + Math.floor(Math.random()*14);          // per-cell tint
-      g.fillStyle = 'rgb('+v+','+v+','+v+')';
+      const cx = x*px + px/2, cy = y*px + px/2;
+      const tint = 1 - Math.random()*0.05;                   // per-cell variation
+      const lvl = function(v){ return Math.round(v * tint); };
+      const grd = g.createRadialGradient(cx, cy, px*0.08, cx, cy, px*0.78);
+      grd.addColorStop(0.00, 'rgb(255,255,255)');
+      grd.addColorStop(0.55, 'rgb('+lvl(246)+','+lvl(246)+','+lvl(246)+')');
+      grd.addColorStop(1.00, 'rgb('+lvl(207)+','+lvl(207)+','+lvl(207)+')');
+      g.fillStyle = grd;
       g.fillRect(x*px, y*px, px, px);
-      g.fillStyle = 'rgba(255,255,255,.62)';                 // chamfer highlight
-      g.fillRect(x*px, y*px, px, 2);
-      g.fillRect(x*px, y*px, 2, px);
-      g.fillStyle = 'rgba(0,0,0,.12)';                       // seam
+      g.fillStyle = 'rgba(0,0,0,.10)';                       // seam
       g.fillRect(x*px, (y+1)*px - 2, px, 2);
       g.fillRect((x+1)*px - 2, y*px, 2, px);
     }
   }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
   return t;
 }
 
@@ -310,7 +321,7 @@ function checkTexture(){
   const t = new THREE.CanvasTexture(c);
   t.magFilter = t.minFilter = THREE.NearestFilter;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(2,2);
+  t.repeat.set(0.7, 0.7);   // ~1-unit check squares against the world UVs
   return t;
 }
 
@@ -343,24 +354,134 @@ function shadowTexture(){
 
 const TEX = {vox:voxelTile(), check:checkTexture(), glow:glowTexture(),
              shadow:shadowTexture()};
+/* ---------------------------------------------------------------------
+   Chamfered voxel geometry
+   The concept art's cubes have their edges cut, not squared off, and that
+   chamfer is what keeps the model from reading as a stack of hard boxes.
+   A scaled unit cube cannot carry it -- scaling a baked bevel stretches it
+   into a wedge -- so each distinct size gets its own geometry, cached, with
+   a constant-width chamfer.
 
-/* One texture object per repeat value, so a roughly 1-unit voxel cell holds
-   across parts of different sizes without needing a texture per box. */
-const voxRepeats = {};
-function voxMap(rep){
-  const k = rep.toFixed(2);
-  if (!voxRepeats[k]){
-    const t = TEX.vox.clone();
-    t.needsUpdate = true;
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(rep, rep);
-    voxRepeats[k] = t;
+   UVs are the world position projected onto the face's dominant axis and
+   divided by the tile's world size, so one voxel cell stays the same size
+   on a hand and on a torso with no per-part texture repeat to manage.
+   ------------------------------------------------------------------ */
+const geoCache = {};
+
+function chamferBox(w, h, d, faceGroup){
+  const key = w.toFixed(2)+'|'+h.toFixed(2)+'|'+d.toFixed(2)+(faceGroup ? '|f' : '');
+  if (geoCache[key]) return geoCache[key];
+
+  const X = w/2, Y = h/2, Z = d/2;
+  const b = Math.min(BEVEL, X*0.45, Y*0.45, Z*0.45);
+  const E = [X, Y, Z];
+
+  // One of the three axes runs to full extent; the other two pull in by b.
+  function vert(full, sx, sy, sz){
+    const sg = [sx, sy, sz];
+    return [0,1,2].map(function(a){ return (a === full ? E[a] : E[a] - b) * sg[a]; });
   }
-  return voxRepeats[k];
+
+  const tris = [];       // {v:[p0,p1,p2], face:0|1|2|null, sign}
+  function push(p0, p1, p2, face, sign){
+    tris.push({v:[p0, p1, p2], face:face, sign:sign});
+  }
+
+  // 6 main faces, each a quad inset by b on its two in-plane axes
+  for (let a=0; a<3; a++){
+    for (let sgn=-1; sgn<=1; sgn+=2){
+      const o = [(a+1)%3, (a+2)%3];
+      const corner = function(i, j){
+        const sg = [0,0,0];
+        sg[a] = sgn; sg[o[0]] = i; sg[o[1]] = j;
+        return vert(a, sg[0], sg[1], sg[2]);
+      };
+      const q = [corner(-1,-1), corner(1,-1), corner(1,1), corner(-1,1)];
+      push(q[0], q[1], q[2], a, sgn);
+      push(q[0], q[2], q[3], a, sgn);
+    }
+  }
+
+  // 12 chamfer quads, one per cube edge
+  for (let a=0; a<3; a++){
+    for (let bx=a+1; bx<3; bx++){
+      const other = 3 - a - bx;
+      for (let sa=-1; sa<=1; sa+=2){
+        for (let sb=-1; sb<=1; sb+=2){
+          const mk = function(full, so){
+            const sg = [0,0,0];
+            sg[a] = sa; sg[bx] = sb; sg[other] = so;
+            return vert(full, sg[0], sg[1], sg[2]);
+          };
+          const A1 = mk(a, -1),  A2 = mk(a, 1);
+          const B1 = mk(bx, -1), B2 = mk(bx, 1);
+          push(A1, A2, B2, null);
+          push(A1, B2, B1, null);
+        }
+      }
+    }
+  }
+
+  // 8 corner triangles
+  for (let sx=-1; sx<=1; sx+=2)
+    for (let sy=-1; sy<=1; sy+=2)
+      for (let sz=-1; sz<=1; sz+=2)
+        push(vert(0,sx,sy,sz), vert(1,sx,sy,sz), vert(2,sx,sy,sz), null);
+
+  // The head needs its front face on a second material, so those two
+  // triangles are moved to the end and given their own group.
+  const isFront = function(t){ return faceGroup && t.face === 2 && t.sign === 1; };
+  const ordered = tris.filter(function(t){ return !isFront(t); })
+                      .concat(tris.filter(isFront));
+
+  const pos = [], nor = [], uv = [];
+  ordered.forEach(function(t){
+    const p = t.v;
+    // outward normal: the shape is convex and centred, so the centroid
+    // direction settles the winding
+    let n = [
+      (p[1][1]-p[0][1])*(p[2][2]-p[0][2]) - (p[1][2]-p[0][2])*(p[2][1]-p[0][1]),
+      (p[1][2]-p[0][2])*(p[2][0]-p[0][0]) - (p[1][0]-p[0][0])*(p[2][2]-p[0][2]),
+      (p[1][0]-p[0][0])*(p[2][1]-p[0][1]) - (p[1][1]-p[0][1])*(p[2][0]-p[0][0])
+    ];
+    const cen = [0,1,2].map(function(i){ return (p[0][i]+p[1][i]+p[2][i])/3; });
+    const order = (n[0]*cen[0] + n[1]*cen[1] + n[2]*cen[2]) < 0 ? [0,2,1] : [0,1,2];
+    if (order[1] === 2){ n = [-n[0], -n[1], -n[2]]; }
+    const len = Math.hypot(n[0], n[1], n[2]) || 1;
+    n = [n[0]/len, n[1]/len, n[2]/len];
+
+    // dominant axis of the normal picks the projection plane for UVs
+    const ax = Math.abs(n[0]) >= Math.abs(n[1]) && Math.abs(n[0]) >= Math.abs(n[2]) ? 0
+             : Math.abs(n[1]) >= Math.abs(n[2]) ? 1 : 2;
+    const front = isFront(t);
+    order.forEach(function(k){
+      const q = p[k];
+      pos.push(q[0], q[1], q[2]);
+      nor.push(n[0], n[1], n[2]);
+      if (front){                       // 0..1 across the face, for the portrait
+        uv.push((q[0] + X) / w, (q[1] + Y) / h);
+      } else if (ax === 0){
+        uv.push(q[2] / TILE_W, q[1] / TILE_W);
+      } else if (ax === 1){
+        uv.push(q[0] / TILE_W, q[2] / TILE_W);
+      } else {
+        uv.push(q[0] / TILE_W, q[1] / TILE_W);
+      }
+    });
+  });
+
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal',   new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv',       new THREE.Float32BufferAttribute(uv, 2));
+  if (faceGroup){
+    const n = ordered.length * 3;
+    g.addGroup(0, n - 6, 0);
+    g.addGroup(n - 6, 6, 1);
+  }
+  geoCache[key] = g;
+  return g;
 }
-const VOX_BODY = 1.8;   // torso, head, sarung
-const VOX_LIMB = 0.7;   // arms, shins, feet, small trim
-const BOX = new THREE.BoxGeometry(1,1,1);   // one geometry, scaled per part
 
 /**
  * The face, drawn onto the head's +z face. In the concept art each eye is an
@@ -406,7 +527,7 @@ function mat(color, opts){
   opts = opts || {};
   return new THREE.MeshLambertMaterial({
     color: color,
-    map: opts.map === null ? null : (opts.map || voxMap(opts.vox || VOX_BODY)),
+    map: opts.map === null ? null : (opts.map || TEX.vox),
     emissive: opts.emissive !== undefined ? opts.emissive : 0x000000,
     emissiveIntensity: opts.ei !== undefined ? opts.ei : 1
   });
@@ -426,8 +547,8 @@ function traceMat(c, level, kind){
  * rx,ry,rz optional rotation.
  */
 function box(parent, o){
-  const m = new THREE.Mesh(BOX, o.material || mat(o.color, o));
-  m.scale.set(o.w, o.h, o.d);
+  const m = new THREE.Mesh(chamferBox(o.w, o.h, o.d, Array.isArray(o.material)),
+                           o.material || mat(o.color, o));
   m.position.set(o.x || 0, o.y || 0, o.z || 0);
   if (o.rx) m.rotation.x = o.rx;
   if (o.ry) m.rotation.y = o.ry;
@@ -561,9 +682,9 @@ function addMotif(parent, b, cfg){
    ------------------------------------------------------------------ */
 function buildSongkok(parent){
   const felt = mat(0x13150f);
-  box(parent, {w:P.headW+0.5, h:3.3, d:P.headD+0.5, y:P.headY + P.headH/2 + 1.45, material:felt});
-  box(parent, {w:P.headW+0.15,h:0.5, d:P.headD+0.15,y:P.headY + P.headH/2 + 3.35, material:felt});
-  box(parent, {w:P.headW+0.62,h:0.4, d:P.headD+0.62,y:P.headY + P.headH/2 + 0.2,  material:mat(0x212517)});
+  box(parent, {w:P.headW+0.5, h:2.6, d:P.headD+0.5, y:P.headY + P.headH/2 + 1.1, material:felt});
+  box(parent, {w:P.headW+0.15,h:0.45,d:P.headD+0.15,y:P.headY + P.headH/2 + 2.6, material:felt});
+  box(parent, {w:P.headW+0.62,h:0.4, d:P.headD+0.62,y:P.headY + P.headH/2 + 0.2, material:mat(0x212517)});
 }
 
 /**
@@ -703,7 +824,7 @@ function buildPack(parent){
  */
 function addHair(head, hair, full){
   const hz = P.headD/2, hx = P.headW/2;
-  const cell = (P.headW + 0.3) / 6;           // ~1.4 units, matching the art
+  const cell = (P.headW + 0.4) / 4;           // ~2.1 units: the art's cubes are chunky
 
   box(head, {w:P.headW+0.24, h:P.headH*0.74, d:1.1, y:0.5, z:-(hz + 0.3), material:hair});
   if (!full){   // under headwear only the nape and sideburns show
@@ -716,24 +837,23 @@ function addHair(head, hair, full){
 
   // crown: 6x5 columns of varying height, so the top edge steps irregularly
   const HEIGHT = [
-    [1,2,2,3,2,1],
-    [1,2,3,3,2,2],
-    [1,2,2,3,3,2],
-    [1,1,2,2,2,1],
-    [1,1,1,2,1,1]
+    [1,2,2,1],
+    [1,2,2,2],
+    [1,1,2,1],
+    [1,1,1,1]
   ];
   for (let r=0;r<HEIGHT.length;r++){
     for (let q=0;q<HEIGHT[r].length;q++){
-      const h = 0.55 + HEIGHT[r][q] * 0.62;
-      box(head, {w:cell + 0.06, h:h, d:cell + 0.06,
-                 x:(q - 2.5) * cell, y:P.headH/2 - 0.25 + h/2, z:(2 - r) * cell - 0.4,
+      const h = 0.7 + HEIGHT[r][q] * 0.72;
+      box(head, {w:cell + 0.1, h:h, d:cell + 0.1,
+                 x:(q - 1.5) * cell, y:P.headH/2 - 0.3 + h/2, z:(1.5 - r) * cell - 0.3,
                  material:hair});
     }
   }
   // fringe over the forehead, dropping lower at the temples
-  [-2.5,-1.5,-0.5,0.5,1.5,2.5].forEach(function(q, i){
-    const drop = (i === 0 || i === 5) ? 2.3 : (i === 1 || i === 4) ? 1.5 : 1.0;
-    box(head, {w:cell + 0.06, h:drop, d:1.0,
+  [-1.5,-0.5,0.5,1.5].forEach(function(q, i){
+    const drop = (i === 0 || i === 3) ? 2.4 : 1.1;
+    box(head, {w:cell + 0.1, h:drop, d:1.1,
                x:q * cell, y:P.headH/2 - drop/2 + 0.1, z:hz + 0.1, material:hair});
   });
   [-1,1].forEach(function(s){   // sideburns
@@ -754,13 +874,10 @@ function buildCharacter(cfg){
 
   const lvl   = cfg.circuit;
   const skin  = mat(cfg.skin);
-  const skinL = mat(cfg.skin,  {vox:VOX_LIMB});
-  const hair  = mat(cfg.hair,  {vox:VOX_LIMB});
+  const hair  = mat(cfg.hair);
   const shirt = mat(cfg.shirt);
-  const shirtL= mat(cfg.shirt, {vox:VOX_LIMB});
-  const trim  = mat(cfg.shirtTrim, {vox:VOX_LIMB});
+  const trim  = mat(cfg.shirtTrim);
   const pants = mat(cfg.pants);
-  const pantsL= mat(cfg.pants, {vox:VOX_LIMB});
   const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEX.check})
                   : cfg.sarung === null ? null : mat(cfg.sarung);
   const circuits  = lvl ? traceMat(c, lvl, 'trace') : null;
@@ -769,20 +886,20 @@ function buildCharacter(cfg){
   /* ---- legs, feet and footwear (mirrored) ---- */
   [-1, 1].forEach(function(s){
     const x = s * P.legX;
-    box(c.body, {w:P.shinW, h:P.shinH, d:P.shinD, x:x, y:P.shinY, material:skinL});
-    box(c.body, {w:P.thighW, h:P.thighH, d:P.thighD, x:x, y:P.thighY, material:skinL});
-    box(c.body, {w:P.shinW+PAD, h:P.shinH+0.2, d:P.shinD+PAD, x:x, y:P.shinY+0.3, material:pantsL});
-    box(c.body, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:x, y:P.thighY, material:pantsL});
+    box(c.body, {w:P.shinW, h:P.shinH, d:P.shinD, x:x, y:P.shinY, material:skin});
+    box(c.body, {w:P.thighW, h:P.thighH, d:P.thighD, x:x, y:P.thighY, material:skin});
+    box(c.body, {w:P.shinW+PAD, h:P.shinH+0.2, d:P.shinD+PAD, x:x, y:P.shinY+0.3, material:pants});
+    box(c.body, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:x, y:P.thighY, material:pants});
     if (cfg.pockets){
       box(c.body, {w:0.35, h:2.4, d:2.0, x:x + s*(P.thighW+PAD)/2, y:P.thighY+1.4, material:trim});
     }
     if (cfg.sandals){
       // bare foot on a wooden sole with a toe strap
-      box(c.body, {w:P.footW, h:1.1, d:P.footD, x:x, y:1.05, z:P.footZ, material:skinL});
+      box(c.body, {w:P.footW, h:1.1, d:P.footD, x:x, y:1.05, z:P.footZ, material:skin});
       box(c.body, {w:P.footW+0.4, h:0.55, d:P.footD+0.4, x:x, y:0.28, z:P.footZ,
-                   material:mat(0xdcae74, {vox:VOX_LIMB})});
+                   material:mat(0xdcae74)});
       box(c.body, {w:P.footW+0.4, h:0.4,  d:1.1, x:x, y:1.35, z:P.footZ - 1.5,
-                   material:mat(0xb98452, {vox:VOX_LIMB})});
+                   material:mat(0xb98452)});
     } else {
       // armoured boot with a glowing toe cap and shin guard
       box(c.body, {w:P.footW+0.6, h:P.footH+0.8, d:P.footD+0.5, x:x, y:P.footY+0.4, z:P.footZ,
@@ -804,12 +921,11 @@ function buildCharacter(cfg){
   c.body.add(head);
   c.head = head;
 
-  // BoxGeometry takes materials as [+x, -x, +y, -y, +z, -z]; only +z is the face
+  // chamferBox puts the +z face in group 1, so the portrait rides there alone
   const faceMat = new THREE.MeshLambertMaterial({color:0xffffff, map:faceTexture(cfg.skin)});
-  box(head, {w:P.headW, h:P.headH, d:P.headD,
-             material:[skin, skin, skin, skin, faceMat, skin]});
+  box(head, {w:P.headW, h:P.headH, d:P.headD, material:[skin, faceMat]});
   [-1,1].forEach(function(s){   // ears stand proud of the head, as in the art
-    box(head, {w:0.5, h:2.0, d:1.5, x:s*(P.headW/2 + 0.22), y:-0.2, z:-0.3, material:skinL});
+    box(head, {w:0.5, h:2.0, d:1.5, x:s*(P.headW/2 + 0.22), y:-0.2, z:-0.3, material:skin});
   });
   addHair(head, hair, cfg.headwear === 'none');
 
@@ -825,13 +941,13 @@ function buildCharacter(cfg){
     c.arms.push(arm);
     const rel = function(y){ return y - P.shoulderY; };
 
-    box(arm, {w:P.uArmW, h:P.uArmH, d:P.uArmD, y:rel(P.uArmY), material:skinL});
-    box(arm, {w:P.lArmW, h:P.lArmH, d:P.lArmD, y:rel(P.lArmY), material:skinL});
-    box(arm, {w:P.handW, h:P.handH, d:P.handD, y:rel(P.handY), material:skinL});
+    box(arm, {w:P.uArmW, h:P.uArmH, d:P.uArmD, y:rel(P.uArmY), material:skin});
+    box(arm, {w:P.lArmW, h:P.lArmH, d:P.lArmD, y:rel(P.lArmY), material:skin});
+    box(arm, {w:P.handW, h:P.handH, d:P.handD, y:rel(P.handY), material:skin});
 
     // sleeve of the baju melayu
-    box(arm, {w:P.uArmW+PAD, h:P.uArmH+0.3, d:P.uArmD+PAD, y:rel(P.uArmY)-0.1, material:shirtL});
-    box(arm, {w:P.lArmW+PAD, h:P.lArmH,     d:P.lArmD+PAD, y:rel(P.lArmY),     material:shirtL});
+    box(arm, {w:P.uArmW+PAD, h:P.uArmH+0.3, d:P.uArmD+PAD, y:rel(P.uArmY)-0.1, material:shirt});
+    box(arm, {w:P.lArmW+PAD, h:P.lArmH,     d:P.lArmD+PAD, y:rel(P.lArmY),     material:shirt});
     box(arm, {w:P.lArmW+PAD+0.2, h:0.5, d:P.lArmD+PAD+0.2, y:rel(P.lArmY) - P.lArmH/2, material:trim});
 
     if (lvl){
@@ -853,8 +969,8 @@ function buildCharacter(cfg){
   box(c.body, {w:P.torsoW+PAD, h:P.torsoH+0.4, d:P.torsoD+PAD, y:P.torsoY-0.1, material:shirt});
   box(c.body, {w:P.torsoW+PAD+0.2, h:1.0, d:P.torsoD+PAD+0.2, y:P.torsoY - P.torsoH/2 - 0.2, material:trim});
   if (cfg.collar){   // white shirt showing at the neckline
-    box(c.body, {w:2.9, h:1.6, d:P.neckD+1.2, y:P.torsoY + P.torsoH/2 - 0.1,
-                 z:0.5, material:mat(cfg.collar)});
+    box(c.body, {w:2.6, h:1.1, d:0.5, y:P.torsoY + P.torsoH/2 - 0.25,
+                 z:P.torsoD/2 + PAD/2 - 0.1, material:mat(cfg.collar)});
   }
   box(c.body, {w:3.7, h:1.2, d:P.neckD+1.6, y:P.torsoY + P.torsoH/2 + 0.4, material:trim});   // collar
   // front opening: a glowing placket on the powered ranks
@@ -862,7 +978,7 @@ function buildCharacter(cfg){
   box(c.body, {w:0.9, h:P.torsoH*0.76, d:0.35, y:P.torsoY + 0.4,
                z:placketZ, material: lvl ? plate : trim});
   if (cfg.buttons){
-    const btn = mat(cfg.buttons, {vox:VOX_LIMB});
+    const btn = mat(cfg.buttons);
     [1.5, 0.25].forEach(function(dy){
       box(c.body, {w:0.6, h:0.6, d:0.3, y:P.torsoY + dy, z:placketZ + 0.22, material:btn});
     });
@@ -966,10 +1082,8 @@ function buildCharacter(cfg){
   c.slot.add(c.label);
 
   /* ---- invisible click target ---- */
-  const picker = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({
-    transparent:true, opacity:0, depthWrite:false
-  }));
-  picker.scale.set(16, 48, 16);
+  const picker = new THREE.Mesh(new THREE.BoxGeometry(16, 48, 16),
+    new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
   picker.position.y = 23;
   picker.userData.char = c;
   c.slot.add(picker);
