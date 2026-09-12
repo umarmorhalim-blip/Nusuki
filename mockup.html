@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nusuki Adab Panel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* =====================================================================
+   NUSUKI — CSS voxel characters + app panel mockup
+   No WebGL, no canvas, no dependencies. Every character is plain divs
+   transformed in CSS 3D, so it drops into any app view that renders HTML.
+
+   HOW TO REUSE
+   1. Copy the "VOXEL SYSTEM" style block below into your stylesheet.
+   2. Either call buildChar(RANKS[n]) from voxel.js to get a DOM node,
+      or open the markup panel at the bottom of this page and paste the
+      static HTML straight into your template -- it needs no JS at all.
+   3. Size a character with --u on its .vx-stage: one voxel unit = --u px.
+      Everything scales from that single number.
+
+   ONE CONSTRAINT WORTH KNOWING
+   CSS 3D sorts whole elements, not fragments, so two boxes that pass
+   through each other flicker as you rotate. The Three.js renderer layers
+   clothing as slightly larger boxes over a bare body; that cannot work
+   here. Instead each part is a single box already coloured as its
+   garment, and trim sits in its own y band or just outside in z, so
+   nothing ever intersects.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------- reset */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:#070f0b;
+  color:#cfeed8;
+  font-family:"IBM Plex Sans",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ============================== VOXEL SYSTEM ==============================
+   .vx-stage   perspective container; set --u here to scale
+   .vx-world   zero-size anchor at ground centre; carries the rotation
+   .vx-box     one voxel box, positioned by --x/--y/--z in units
+   .vx-box > i six faces, shaded by class
+   ------------------------------------------------------------------------ */
+.vx-stage{
+  --u:3;                       /* px per voxel unit */
+  --spin:-22deg;
+  position:relative;
+  perspective:calc(var(--u) * 260px);
+  perspective-origin:50% 38%;
+}
+.vx-world{
+  position:absolute; left:50%; bottom:var(--lift, 0px); width:0; height:0;
+  transform-style:preserve-3d;
+  transform-origin:0 0 0;
+  transform:rotateY(var(--spin));
+}
+.vx-box{
+  position:absolute; left:0; top:0;
+  transform-style:preserve-3d;
+  width:calc(var(--w) * var(--u) * 1px);
+  height:calc(var(--h) * var(--u) * 1px);
+  transform:translate3d(
+    calc((var(--x) - var(--w) / 2) * var(--u) * 1px),
+    calc((var(--y) + var(--h) / 2) * var(--u) * -1px),
+    calc(var(--z) * var(--u) * 1px)
+  );
+}
+.vx-box > i{
+  position:absolute; left:50%; top:50%;
+  background:var(--c);
+  border-radius:1.5px;                  /* hints the chamfer the art has */
+  /* voxel cells: a soft grid with a light top-left chamfer per cell */
+  background-image:
+    linear-gradient(rgba(255,255,255,.07), rgba(0,0,0,.05)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.10) 0 1px, transparent 1px calc(var(--u) * 1px * 1.05)),
+    repeating-linear-gradient(0deg,  rgba(0,0,0,.10) 0 1px, transparent 1px calc(var(--u) * 1px * 1.05));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);
+}
+/* the six faces: size, placement, and a fixed brightness that stands in
+   for a key light from the front-upper-left */
+.vx-box > .f{ width:calc(var(--w) * var(--u) * 1px); height:calc(var(--h) * var(--u) * 1px);
+  transform:translate(-50%,-50%) translateZ(calc(var(--d) / 2 * var(--u) * 1px)); filter:brightness(1); }
+.vx-box > .b{ width:calc(var(--w) * var(--u) * 1px); height:calc(var(--h) * var(--u) * 1px);
+  transform:translate(-50%,-50%) rotateY(180deg) translateZ(calc(var(--d) / 2 * var(--u) * 1px)); filter:brightness(.62); }
+.vx-box > .r{ width:calc(var(--d) * var(--u) * 1px); height:calc(var(--h) * var(--u) * 1px);
+  transform:translate(-50%,-50%) rotateY(90deg) translateZ(calc(var(--w) / 2 * var(--u) * 1px)); filter:brightness(.74); }
+.vx-box > .l{ width:calc(var(--d) * var(--u) * 1px); height:calc(var(--h) * var(--u) * 1px);
+  transform:translate(-50%,-50%) rotateY(-90deg) translateZ(calc(var(--w) / 2 * var(--u) * 1px)); filter:brightness(.88); }
+.vx-box > .u{ width:calc(var(--w) * var(--u) * 1px); height:calc(var(--d) * var(--u) * 1px);
+  transform:translate(-50%,-50%) rotateX(90deg) translateZ(calc(var(--h) / 2 * var(--u) * 1px)); filter:brightness(1.16); }
+.vx-box > .dn{ width:calc(var(--w) * var(--u) * 1px); height:calc(var(--d) * var(--u) * 1px);
+  transform:translate(-50%,-50%) rotateX(-90deg) translateZ(calc(var(--h) / 2 * var(--u) * 1px)); filter:brightness(.42); }
+
+/* neon parts keep their own brightness and throw light */
+.vx-box.neon > i{
+  filter:none;
+  background-image:linear-gradient(rgba(255,255,255,.22), rgba(255,255,255,0));
+  box-shadow:0 0 calc(var(--u) * 2.2px) var(--c), inset 0 0 0 1px rgba(255,255,255,.4);
+}
+/* woven samping */
+.vx-box.check > i{
+  background-image:repeating-conic-gradient(#dedbd4 0 25%, #35373a 0 50%);
+  background-size:calc(var(--u) * 2.2px) calc(var(--u) * 2.2px);
+}
+
+/* ------------------------------------------------- the painted portrait */
+.vx-face{ position:absolute; inset:0 }
+.vx-face span{ position:absolute; background:#171310; border-radius:1px }
+.vx-brow{ height:9%; width:26% }
+.vx-lid { width:7%;  height:20% }
+.vx-smile{
+  position:absolute; left:37%; width:26%; top:60%; height:9%;
+  border-bottom:calc(var(--u) * .7px) solid #6b4033;
+  border-radius:0 0 60% 60%;
+}
+
+/* ============================== APP PANEL ============================== */
+.app{
+  max-width:1180px; margin:0 auto; padding:20px 16px 56px;
+}
+.app-top{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 14px;
+  padding-bottom:14px; margin-bottom:18px;
+  border-bottom:1px solid #1d3a2b;
+}
+.app-top h1{
+  font-family:Rajdhani,system-ui,sans-serif; font-weight:700;
+  font-size:clamp(20px,4vw,28px); letter-spacing:.06em; margin:0; color:#eafff0;
+}
+.app-top .sub{ font-size:12px; letter-spacing:.16em; color:#5f9d74; font-family:Rajdhani,sans-serif }
+.app-top .spacer{ flex:1 1 40px }
+.chip{
+  font-family:Rajdhani,sans-serif; font-weight:600; font-size:12px; letter-spacing:.12em;
+  color:#4dff52; border:1px solid #245c33; background:#0c1c13;
+  padding:5px 10px; border-radius:999px; white-space:nowrap;
+}
+
+.grid{ display:grid; gap:16px; grid-template-columns:1fr }
+@media (min-width:900px){
+  .grid{ grid-template-columns:216px 1fr 260px; align-items:start }
+}
+
+.card{
+  background:#0c1811; border:1px solid #1d3a2b; border-radius:10px;
+  padding:14px;
+}
+.card > h2{
+  font-family:Rajdhani,sans-serif; font-weight:600; font-size:11px;
+  letter-spacing:.2em; color:#5f9d74; margin:0 0 12px;
+}
+
+/* --- rank rail: horizontal on phones, a column on desktop --- */
+.rail{ display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; scrollbar-width:thin }
+@media (min-width:900px){ .rail{ flex-direction:column; overflow:visible } }
+.rank-btn{
+  flex:0 0 auto; display:flex; align-items:center; gap:10px;
+  background:#0a1610; border:1px solid #1b3527; border-radius:8px;
+  padding:8px 10px 8px 8px; cursor:pointer; color:inherit; font:inherit;
+  transition:border-color .15s, background .15s;
+  text-align:left; min-width:150px;
+}
+.rank-btn:hover{ border-color:#2f7a48; background:#0d1e14 }
+.rank-btn[aria-selected="true"]{ border-color:#4dff52; background:#102a19 }
+.rank-btn:focus-visible{ outline:2px solid #4dff52; outline-offset:2px }
+.rank-btn .thumb{ width:44px; height:66px; flex:0 0 44px }
+.rank-btn .meta{ min-width:0 }
+.rank-btn .n{
+  font-family:Rajdhani,sans-serif; font-weight:600; font-size:10px;
+  letter-spacing:.16em; color:#4f8a63;
+}
+.rank-btn .nm{
+  font-family:Rajdhani,sans-serif; font-weight:700; font-size:14px;
+  letter-spacing:.03em; color:#eafff0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.rank-btn .bar{ height:4px; margin-top:5px; background:#0f2617; border-radius:2px; overflow:hidden }
+.rank-btn .bar i{ display:block; height:100%; background:#2f9c50 }
+.rank-btn[aria-selected="true"] .bar i{ background:#4dff52 }
+
+/* --- the featured character --- */
+.hero{ display:grid; gap:14px; grid-template-columns:1fr }
+@media (min-width:560px){ .hero{ grid-template-columns:minmax(180px,240px) 1fr } }
+.hero-stage{
+  position:relative; height:380px; border-radius:8px; overflow:hidden;
+  background:
+    radial-gradient(120% 70% at 50% 96%, rgba(77,255,82,.13), transparent 60%),
+    linear-gradient(#081310, #0a1a11);
+  border:1px solid #16301f;
+  cursor:grab; touch-action:none;
+}
+.hero-stage.dragging{ cursor:grabbing }
+.hero-stage{ --lift:34px }
+.rank-btn .thumb{ --lift:2px }
+.hero-stage .floor{
+  position:absolute; left:50%; bottom:26px; translate:-50% 0;
+  width:62%; height:14px; border-radius:50%;
+  background:radial-gradient(rgba(77,255,82,.3), transparent 70%);
+}
+.hero-name{ font-family:Rajdhani,sans-serif; font-weight:700; font-size:clamp(22px,4.4vw,30px); letter-spacing:.03em; color:#eafff0; margin:0 }
+.hero-role{ font-family:Rajdhani,sans-serif; font-size:13px; letter-spacing:.16em; color:#4dff52; margin:2px 0 10px }
+.hero-desc{ font-size:13px; line-height:1.65; color:#96c7a7; margin:0 0 16px; max-width:46ch }
+
+.meter-label{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-family:Rajdhani,sans-serif; font-size:11px; letter-spacing:.18em; color:#5f9d74; margin-bottom:6px;
+}
+.meter-label b{ color:#4dff52; font-variant-numeric:tabular-nums; font-size:13px }
+.meter{ height:12px; background:#08190f; border:1px solid #235c34; border-radius:3px; display:flex; gap:2px; padding:2px }
+.meter i{ flex:1; background:#0e2a18; border-radius:1px }
+.meter i.on{ background:#4dff52 }
+
+.spec{ display:flex; flex-wrap:wrap; gap:8px; margin-top:16px }
+.spec span{
+  font-family:Rajdhani,sans-serif; font-size:12px; letter-spacing:.08em;
+  border:1px solid #1f4a30; border-radius:6px; padding:5px 9px; color:#9fd9b3; background:#091a11;
+}
+.spec span.on{ border-color:#3f9d55; color:#dcffe6 }
+.spec span.on::before{ content:"● "; color:#4dff52 }
+.spec span.off::before{ content:"○ "; color:#39603f }
+
+/* --- missions --- */
+.task{
+  display:flex; align-items:center; gap:10px; padding:9px 10px;
+  border:1px solid #1b3527; border-radius:7px; background:#0a1610; margin-bottom:8px;
+}
+.task .tick{
+  width:18px; height:18px; flex:0 0 18px; border-radius:4px;
+  border:1px solid #2f7a48; display:grid; place-items:center;
+  font-size:11px; color:#031008; background:#4dff52; font-weight:700;
+}
+.task.locked{ opacity:.55 }
+.task.locked .tick{ background:transparent; color:#5f9d74; border-color:#28503a }
+.task .tx{ font-family:Rajdhani,sans-serif; font-weight:600; font-size:13px; letter-spacing:.05em; color:#dcffe6 }
+.task .rq{ font-size:11px; color:#5f9d74; display:block; letter-spacing:.04em; font-family:"IBM Plex Sans",sans-serif; font-weight:400 }
+.dots{ display:flex; gap:5px; margin-top:2px }
+.dots i{ width:16px; height:16px; border-radius:4px; background:#4dff52; color:#031008;
+  font-size:10px; display:grid; place-items:center; font-weight:700 }
+.dots i.off{ background:#12291a; color:#3d6b48 }
+
+/* --- export panel --- */
+.export{ margin-top:22px }
+.export summary{
+  font-family:Rajdhani,sans-serif; font-weight:600; font-size:12px; letter-spacing:.16em;
+  color:#5f9d74; cursor:pointer; padding:10px 0;
+}
+.export summary:focus-visible{ outline:2px solid #4dff52; outline-offset:3px }
+.export p{ font-size:13px; line-height:1.6; color:#96c7a7; max-width:70ch }
+.export textarea{
+  width:100%; height:200px; margin-top:8px; resize:vertical;
+  background:#060d09; color:#9fd9b3; border:1px solid #1d3a2b; border-radius:8px;
+  padding:12px; font-family:ui-monospace,"Courier New",monospace; font-size:11.5px; line-height:1.5;
+}
+.export .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px }
+button.act{
+  font-family:Rajdhani,sans-serif; font-weight:600; font-size:12px; letter-spacing:.12em;
+  background:#102a19; color:#9fd9b3; border:1px solid #245c33; border-radius:6px;
+  padding:8px 12px; cursor:pointer;
+}
+button.act:hover{ border-color:#4dff52; color:#eafff0 }
+button.act:focus-visible{ outline:2px solid #4dff52; outline-offset:2px }
+.hint{ font-size:11.5px; color:#4f8a63 }
+
+@media (prefers-reduced-motion:no-preference){
+  .spin{ animation:turn 22s linear infinite }
+  @keyframes turn{ from{ --spin:-200deg } to{ --spin:160deg } }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="app-top">
+    <h1>Panel Adab</h1>
+    <span class="sub">NUSUKI // PROGRESI PANGKAT</span>
+    <span class="spacer"></span>
+    <span class="chip" id="chip-rank">RANK 5 · ADIGURU</span>
+  </header>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="h-rail">
+      <h2 id="h-rail">PROGRESI PANGKAT</h2>
+      <div class="rail" id="rail" role="tablist" aria-label="Pilih pangkat"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-hero">
+      <h2 id="h-hero">STATUS SEMASA</h2>
+      <div class="hero">
+        <div class="hero-stage vx-stage spin" id="stage" style="--u:5.6">
+          <div class="floor"></div>
+        </div>
+        <div>
+          <p class="hero-name" id="hero-name">Adiguru</p>
+          <p class="hero-role" id="hero-role">GURU SILAT • AL-AMIN</p>
+          <p class="hero-desc" id="hero-desc"></p>
+
+          <div class="meter-label"><span>NUR AMANAH</span><b id="amanah">98/100</b></div>
+          <div class="meter" id="meter" role="img" aria-label="Nur Amanah"></div>
+
+          <div class="spec" id="spec"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-task">
+      <h2 id="h-task">MISI &amp; TUGASAN</h2>
+      <div class="task">
+        <span class="tick">✓</span>
+        <span class="tx">Adab Harian
+          <span class="rq">5 / 5 selesai minggu ini</span>
+          <span class="dots"><i>✓</i><i>✓</i><i>✓</i><i>✓</i><i>✓</i></span>
+        </span>
+      </div>
+      <div class="task">
+        <span class="tick">✓</span>
+        <span class="tx">Pohon Istiqamah<span class="rq">Peringkat 4 — akar kukuh</span></span>
+      </div>
+      <div class="task locked" id="task-comm">
+        <span class="tick">🔒</span>
+        <span class="tx">Khidmat Komuniti<span class="rq">Perlu Rank 3 ke atas</span></span>
+      </div>
+      <div class="task locked" id="task-lead">
+        <span class="tick">🔒</span>
+        <span class="tx">Kepimpinan Adiguru<span class="rq">Perlu Rank 5</span></span>
+      </div>
+    </section>
+  </div>
+
+  <details class="export">
+    <summary>MARKUP STATIK — SALIN MASUK APLIKASI</summary>
+    <p>Ini markup penuh untuk watak yang sedang dipilih: div sahaja, tiada JavaScript.
+       Tampal dalam mana-mana template dan pastikan blok gaya <code>VOXEL SYSTEM</code>
+       ada dalam stylesheet anda. Saiz dikawal oleh <code>--u</code> pada
+       <code>.vx-stage</code> — satu unit voxel bersamaan <code>--u</code> piksel.</p>
+    <div class="row">
+      <button class="act" id="btn-copy">SALIN MARKUP</button>
+      <button class="act" id="btn-spin">HENTIKAN PUTARAN</button>
+      <span class="hint" id="copy-hint">Boleh juga drag watak itu untuk memutarnya.</span>
+    </div>
+    <textarea id="markup" spellcheck="false" readonly aria-label="Markup statik"></textarea>
+  </details>
+</div>
+
+<script>
+/* =====================================================================
+   voxel.js — builds a character out of divs
+   ===================================================================== */
+
+/* A part is [w,h,d, x,y,z, colour, extraClass]. y is measured up from the
+   ground so the numbers match the Three.js renderer's skeleton; the CSS
+   flips the sign. Order matters only for readability -- CSS 3D sorts by
+   depth, not by document order. */
+const SKIN = '#f0aa6d', HAIR = '#222221', NEON = '#4dff52';
+
+function limbs(c){
+  const p = [];
+  const leg = c.legwear, foot = c.footwear;
+  [-1, 1].forEach(function(s){
+    const x = s * 1.7;
+    // foot, shin, thigh
+    p.push([2.7, 1.4, 3.9,  x, 0.7, 0.4, foot]);
+    if (c.sandals){
+      p.push([3.1, 0.5, 4.2, x, 0.25, 0.4, '#c08d55']);
+      p.push([2.4, 7.0, 2.4, x, 4.9, 0, c.barefoot ? SKIN : leg]);
+    } else {
+      p.push([2.8, 7.0, 2.8, x, 4.9, 0, leg]);
+      p.push([3.0, 0.9, 3.0, x, 2.0, 0, NEON, 'neon']);        // boot cuff
+    }
+    p.push([2.9, 7.6, 2.9, x, 12.2, 0, leg]);
+    if (c.neon) p.push([3.1, 0.8, 3.1, x, 8.9, 0, NEON, 'neon']);  // knee band
+  });
+  return p;
+}
+
+function arms(c){
+  const p = [];
+  [-1, 1].forEach(function(s){
+    const x = s * 4.6;
+    p.push([2.3, 5.8, 2.5, x, 23.7, 0, c.shirt]);              // upper sleeve
+    p.push([2.1, 5.2, 2.3, x, 18.2, 0, c.shirt]);              // forearm
+    p.push([2.2, 0.7, 2.4, x, 15.8, 0, c.trim]);               // cuff
+    p.push([2.7, 2.5, 2.9, x, 14.3, 0, c.gloves || SKIN]);     // hand
+    if (c.neon) p.push([2.9, 0.7, 3.1, x, 15.9, 0, NEON, 'neon']);
+  });
+  return p;
+}
+
+function body(c){
+  const p = [];
+  // hips: a knee-length sarung on the barefoot ranks, a short wrap otherwise
+  if (c.sarung){
+    const h = c.sarungLong ? 9.2 : 5.0;
+    p.push([6.8, h, 4.4, 0, 16.0 + h/2 - 0.4, 0, c.sarung, c.sarung === 'check' ? 'check' : '']);
+  } else {
+    p.push([6.6, 4.2, 4.2, 0, 17.9, 0, c.legwear]);
+  }
+  p.push([7.1, 0.9, 4.7, 0, 19.1, 0, c.neon ? NEON : c.trim, c.neon ? 'neon' : '']);   // belt
+  if (c.neon) p.push([1.9, 1.5, 0.6, 0, 19.1, 2.6, NEON, 'neon']);                     // buckle
+
+  p.push([6.3, 7.2, 3.7, 0, 23.0, 0, c.shirt]);                                        // torso
+  p.push([0.9, 5.4, 0.4, 0, 23.0, 2.0, c.neon ? NEON : c.trim, c.neon ? 'neon' : '']); // placket
+  if (c.buttons){
+    p.push([0.7, 0.7, 0.35, 0, 24.6, 2.2, c.buttons]);
+    p.push([0.7, 0.7, 0.35, 0, 23.2, 2.2, c.buttons]);
+  }
+  if (c.collar) p.push([2.7, 1.1, 0.6, 0, 26.2, 1.9, c.collar]);
+  if (c.neon)   p.push([1.6, 1.6, 0.5, 0, 25.2, 2.05, NEON, 'neon']);                  // chest core
+  p.push([3.6, 1.0, 3.6, 0, 26.9, 0, c.trim]);                                         // collar band
+  p.push([2.4, 1.4, 2.4, 0, 27.3, 0, SKIN]);                                           // neck
+
+  if (c.pack){
+    p.push([5.6, 7.0, 2.6, 0, 23.2, -3.2, '#14181c']);
+    p.push([5.8, 1.3, 2.8, 0, 26.2, -3.2, '#1b5d76']);
+    [-1,1].forEach(function(s){ p.push([0.8, 8.2, 0.7, s*2.2, 23.0, 2.05, '#1b5d76']); });
+  }
+  return p;
+}
+
+function head(c){
+  const p = [];
+  p.push([7.4, 7.4, 7.4, 0, 31.9, 0, SKIN, 'head']);       // 'head' gets the portrait
+  // chunky voxel haircut: a back slab plus a stepped crown
+  if (c.headwear === 'none'){
+    p.push([7.5, 5.6, 1.2, 0, 31.6, -4.0, HAIR]);
+    [[-2.4,1.5],[-0.8,2.2],[0.8,2.0],[2.4,1.4]].forEach(function(t){
+      p.push([1.8, t[1], 7.4, t[0], 35.6 + t[1]/2 - 0.6, -0.2, HAIR]);
+    });
+    p.push([7.5, 1.5, 1.1, 0, 34.6, 3.6, HAIR]);           // fringe
+    [-1,1].forEach(function(s){ p.push([0.6, 2.4, 7.2, s*3.9, 33.6, 0, HAIR]); });
+  } else {
+    p.push([7.5, 0.9, 7.5, 0, 35.2, 0, HAIR]);
+    p.push([7.5, 4.6, 1.2, 0, 31.2, -4.0, HAIR]);
+  }
+  if (c.headwear === 'songkok'){
+    p.push([7.8, 2.7, 7.8, 0, 37.0, 0, '#15170f']);
+    p.push([7.5, 0.5, 7.5, 0, 38.5, 0, '#22271a']);
+  }
+  if (c.headwear === 'tanijak'){
+    const hot = c.rank === 5;
+    p.push([8.2, 2.0, 8.2, 0, 36.6, 0, '#0c1411']);        // band
+    p.push([8.3, 0.35, 8.3, 0, 37.7, 0, NEON, 'neon']);
+    p.push([7.8, 2.0, 7.8, 0, 38.6, 0, '#0c1411']);        // crown
+    p.push([4.8, 1.7, 0.8, 0, 38.2, 4.0, '#0c1411']);      // front fold
+    p.push([1.5, 1.5, 0.4, 0, 38.2, 4.5, NEON, 'neon']);   // emblem
+    // two upswept folds, the tall one on the wearer's left
+    p.push([4.3, 2.6, 3.6, -1.9, 40.9, -0.2, '#0c1411', 'tilt-a']);
+    p.push([3.2, 1.8, 3.0,  2.1, 40.4, -0.2, '#0c1411', 'tilt-b']);
+    p.push([3.6, 0.3, 3.2, -2.2, 42.2, 0.4, NEON, 'neon tilt-a']);
+    if (hot){
+      p.push([1.6, 1.6, 1.6, 0, 43.6, 0, NEON, 'neon']);   // nur node
+      p.push([0.8, 0.8, 0.8, -3.4, 43.0, 1.4, NEON, 'neon']);
+      p.push([0.8, 0.8, 0.8, 3.2, 42.4, -1.0, NEON, 'neon']);
+    }
+  }
+  return p;
+}
+
+function prop(c){
+  const p = [];
+  if (c.prop === 'baton'){
+    p.push([1.2, 7.4, 1.2, 5.9, 15.4, 2.6, '#8a5f39', 'tilt-prop']);
+    p.push([1.4, 1.0, 1.4, 5.9, 18.4, 2.6, '#3c6b44', 'tilt-prop']);
+  }
+  if (c.prop === 'keris'){
+    p.push([1.5, 3.0, 1.5, 6.0, 13.4, 2.8, '#132f20', 'tilt-prop']);   // hulu
+    p.push([3.8, 0.9, 2.0, 6.0, 15.4, 2.8, NEON, 'neon tilt-prop']);   // ganja
+    for (let i=0;i<5;i++){
+      p.push([1.9 - i*0.3, 1.9, 0.7, 6.0 + (i%2 ? 0.3 : -0.3), 16.8 + i*1.7, 2.8,
+              NEON, 'neon tilt-prop']);
+    }
+  }
+  return p;
+}
+
+/* ---- the five ranks ---------------------------------------------------- */
+const RANKS = [
+  { rank:1, name:'Anak Dagang', role:'Pedagang Muda', amanah:24,
+    desc:'Baju melayu kain kasar, samping putih, berkaki selipar. Belum ada nur — adab masih di peringkat niat.',
+    scale:0.80, shirt:'#a85c22', trim:'#c4762f', legwear:'#6f4523', footwear:'#dcae74',
+    sarung:'#e5dcc9', sarungLong:true, sandals:true, buttons:'#f0c02a',
+    headwear:'none', prop:null, spec:[0,0,0] },
+  { rank:2, name:'Perantau', role:'Pengembara Ilmu', amanah:45,
+    desc:'Baju biru perantau, seluar jean gelap, beg sandar penuh catatan. Mula mengumpul ilmu di luar kampung.',
+    scale:0.88, shirt:'#1a8798', trim:'#38b3c4', legwear:'#2b3a52', footwear:'#dcae74',
+    sarung:null, sandals:true, pack:true,
+    headwear:'none', prop:null, spec:[1,0,0] },
+  { rank:3, name:'Pendekar Muda', role:'Murid Gelanggang', amanah:63,
+    desc:'Baju melayu hitam, songkok, samping berpetak. Memegang kayu latihan — silat bermula dengan hormat.',
+    scale:0.93, shirt:'#1d2022', trim:'#2f4036', legwear:'#111416', footwear:'#dcae74',
+    sarung:'check', sarungLong:true, sandals:true, buttons:'#6ddb3a',
+    headwear:'songkok', prop:'baton', spec:[1,1,0] },
+  { rank:4, name:'Pahlawan Siber', role:'Panglima Siber', amanah:84,
+    desc:'Litar neon halus menyala pada baju, plat nur di tali pinggang dan but. Tanijak hitam berdenyut perlahan.',
+    scale:1.00, shirt:'#0e1312', trim:'#18221d', legwear:'#0a0d0c', footwear:'#0a0e0c',
+    sarung:'#0c100f', sandals:false, neon:true, collar:'#e9eef0', gloves:'#0b100d',
+    headwear:'tanijak', prop:'keris', spec:[1,1,1] },
+  { rank:5, name:'Adiguru', role:'Guru Silat • Al-Amin', amanah:98,
+    desc:'Litar nur penuh menyala di seluruh tubuh. Tanijak Dendam Tak Sudah bercahaya dengan zarah nur, keris nur di tangan.',
+    scale:1.14, shirt:'#080c0a', trim:'#0e1712', legwear:'#060908', footwear:'#080b09',
+    sarung:'#080c0a', sandals:false, neon:true, gloves:'#0b100d',
+    headwear:'tanijak', prop:'keris', spec:[1,1,1] }
+];
+
+/* ---- markup ----------------------------------------------------------- */
+const FACES = ['f','b','r','l','u','dn'];
+
+function boxEl(part, withPortrait){
+  const w = part[0], h = part[1], d = part[2];
+  const el = document.createElement('div');
+  el.className = 'vx-box' + (part[7] ? ' ' + part[7] : '');
+  el.style.cssText = '--w:' + w + ';--h:' + h + ';--d:' + d +
+                     ';--x:' + part[3] + ';--y:' + part[4] + ';--z:' + part[5] +
+                     ';--c:' + part[6];
+  FACES.forEach(function(f){
+    const i = document.createElement('i');
+    i.className = f;
+    if (f === 'f' && withPortrait) i.appendChild(portraitEl());
+    el.appendChild(i);
+  });
+  return el;
+}
+
+/* Each eye is an L: a brow bar with a short descender on its inner edge,
+   the way the concept art draws it. */
+function portraitEl(){
+  const wrap = document.createElement('div');
+  wrap.className = 'vx-face';
+  [[16, 'left'], [58, 'right']].forEach(function(e){
+    const brow = document.createElement('span');
+    brow.className = 'vx-brow';
+    brow.style.left = e[0] + '%';
+    brow.style.top = '31%';
+    wrap.appendChild(brow);
+    const lid = document.createElement('span');
+    lid.className = 'vx-lid';
+    lid.style.left = (e[1] === 'left' ? e[0] + 19 : e[0]) + '%';
+    lid.style.top = '31%';
+    wrap.appendChild(lid);
+  });
+  const smile = document.createElement('div');
+  smile.className = 'vx-smile';
+  wrap.appendChild(smile);
+  return wrap;
+}
+
+function buildChar(c){
+  const world = document.createElement('div');
+  world.className = 'vx-world';
+  world.style.scale = c.scale;          /* stature rises with rank */
+  const parts = limbs(c).concat(arms(c), body(c), head(c), prop(c));
+  parts.forEach(function(p){
+    world.appendChild(boxEl(p, p[7] === 'head'));
+  });
+  return world;
+}
+
+/* fold and prop angles that the flat part list cannot express */
+const extra = document.createElement('style');
+extra.textContent =
+  '.vx-box.tilt-a{transform:translate3d(calc((var(--x) - var(--w)/2)*var(--u)*1px),' +
+  'calc((var(--y) + var(--h)/2)*var(--u)*-1px),calc(var(--z)*var(--u)*1px)) rotateZ(34deg)}' +
+  '.vx-box.tilt-b{transform:translate3d(calc((var(--x) - var(--w)/2)*var(--u)*1px),' +
+  'calc((var(--y) + var(--h)/2)*var(--u)*-1px),calc(var(--z)*var(--u)*1px)) rotateZ(-40deg)}' +
+  '.vx-box.tilt-prop{transform:translate3d(calc((var(--x) - var(--w)/2)*var(--u)*1px),' +
+  'calc((var(--y) + var(--h)/2)*var(--u)*-1px),calc(var(--z)*var(--u)*1px)) rotateZ(-13deg)}';
+document.head.appendChild(extra);
+
+/* =====================================================================
+   panel wiring
+   ===================================================================== */
+const stage = document.getElementById('stage');
+const rail  = document.getElementById('rail');
+let current = 4;
+
+RANKS.forEach(function(c, i){
+  const b = document.createElement('button');
+  b.className = 'rank-btn';
+  b.type = 'button';
+  b.setAttribute('role', 'tab');
+  b.setAttribute('aria-selected', String(i === current));
+  b.innerHTML =
+    '<div class="thumb vx-stage" style="--u:1.55;--spin:-20deg"></div>' +
+    '<div class="meta"><div class="n">RANK ' + c.rank + '</div>' +
+    '<div class="nm">' + c.name + '</div>' +
+    '<div class="bar"><i style="width:' + c.amanah + '%"></i></div></div>';
+  b.querySelector('.thumb').appendChild(buildChar(c));
+  b.addEventListener('click', function(){ select(i); });
+  rail.appendChild(b);
+});
+
+function select(i){
+  current = i;
+  const c = RANKS[i];
+  stage.querySelectorAll('.vx-world').forEach(function(n){ n.remove(); });
+  stage.appendChild(buildChar(c));
+
+  document.getElementById('hero-name').textContent = c.name;
+  document.getElementById('hero-role').textContent = c.role.toUpperCase();
+  document.getElementById('hero-desc').textContent = c.desc;
+  document.getElementById('amanah').textContent = c.amanah + '/100';
+  document.getElementById('chip-rank').textContent = 'RANK ' + c.rank + ' · ' + c.name.toUpperCase();
+
+  const meter = document.getElementById('meter');
+  meter.innerHTML = '';
+  const on = Math.round(c.amanah / 5);
+  for (let k=0;k<20;k++){
+    const cell = document.createElement('i');
+    if (k < on) cell.className = 'on';
+    meter.appendChild(cell);
+  }
+
+  const names = ['Al-Amin (Ketua Sosial)', 'Al-Hakim (Ilmuwan)', 'Al-Muslih (Pembina)'];
+  const spec = document.getElementById('spec');
+  spec.innerHTML = '';
+  names.forEach(function(n, k){
+    const s = document.createElement('span');
+    s.className = c.spec[k] ? 'on' : 'off';
+    s.textContent = n;
+    spec.appendChild(s);
+  });
+
+  document.getElementById('task-comm').classList.toggle('locked', c.rank < 3);
+  document.getElementById('task-lead').classList.toggle('locked', c.rank < 5);
+  rail.querySelectorAll('.rank-btn').forEach(function(b, k){
+    b.setAttribute('aria-selected', String(k === i));
+  });
+  document.getElementById('markup').value = exportMarkup(c);
+}
+
+/* readable static markup for pasting into an app template */
+function exportMarkup(c){
+  const parts = limbs(c).concat(arms(c), body(c), head(c), prop(c));
+  const rows = parts.map(function(p){
+    const cls = 'vx-box' + (p[7] ? ' ' + p[7] : '');
+    const st = '--w:'+p[0]+';--h:'+p[1]+';--d:'+p[2]+';--x:'+p[3]+';--y:'+p[4]+';--z:'+p[5]+';--c:'+p[6];
+    const faces = p[7] === 'head'
+      ? '\n      <i class="f"><div class="vx-face">' +
+        '<span class="vx-brow" style="left:16%;top:31%"></span>' +
+        '<span class="vx-lid" style="left:35%;top:31%"></span>' +
+        '<span class="vx-brow" style="left:58%;top:31%"></span>' +
+        '<span class="vx-lid" style="left:58%;top:31%"></span>' +
+        '<div class="vx-smile"></div></div></i>' +
+        '\n      <i class="b"></i><i class="r"></i><i class="l"></i><i class="u"></i><i class="dn"></i>'
+      : '\n      <i class="f"></i><i class="b"></i><i class="r"></i><i class="l"></i><i class="u"></i><i class="dn"></i>';
+    return '    <div class="' + cls + '" style="' + st + '">' + faces + '\n    </div>';
+  });
+  return '<!-- Rank ' + c.rank + ' — ' + c.name + ' -->\n' +
+         '<div class="vx-stage" style="--u:6">\n' +
+         '  <div class="vx-world" style="scale:' + c.scale + ';transform-origin:0 100% 0">\n' +
+         rows.join('\n') + '\n  </div>\n</div>';
+}
+
+/* drag to turn, and a pause switch for the idle spin */
+let drag = null, spin = -22;
+stage.addEventListener('pointerdown', function(e){
+  drag = {x:e.clientX, start:spin};
+  stage.classList.add('dragging');
+  stage.classList.remove('spin');
+  document.getElementById('btn-spin').textContent = 'MULAKAN PUTARAN';
+  stage.setPointerCapture(e.pointerId);
+});
+stage.addEventListener('pointermove', function(e){
+  if (!drag) return;
+  spin = drag.start + (e.clientX - drag.x) * 0.6;
+  stage.style.setProperty('--spin', spin + 'deg');
+});
+stage.addEventListener('pointerup', function(){ drag = null; stage.classList.remove('dragging'); });
+
+document.getElementById('btn-spin').addEventListener('click', function(){
+  const on = stage.classList.toggle('spin');
+  this.textContent = on ? 'HENTIKAN PUTARAN' : 'MULAKAN PUTARAN';
+  if (on) stage.style.removeProperty('--spin');
+});
+
+document.getElementById('btn-copy').addEventListener('click', function(){
+  const ta = document.getElementById('markup');
+  const hint = document.getElementById('copy-hint');
+  if (navigator.clipboard){
+    navigator.clipboard.writeText(ta.value).then(
+      function(){ hint.textContent = 'Markup disalin ke papan klip.'; },
+      function(){ ta.select(); hint.textContent = 'Tekan Ctrl/Cmd+C untuk salin.'; }
+    );
+  } else {
+    ta.select();
+    hint.textContent = 'Tekan Ctrl/Cmd+C untuk salin.';
+  }
+});
+
+select(current);
+</script>
+</body>
+</html>

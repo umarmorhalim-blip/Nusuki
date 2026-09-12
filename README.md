@@ -8,6 +8,42 @@ voxels, with neon green circuitry on the higher ranks.
 Open `index.html` in a browser. No build step, no install; Three.js r128 and
 OrbitControls load from CDN.
 
+## Files
+
+| File | What it is |
+| --- | --- |
+| `index.html` | The Three.js renderer — five ranks side by side, orbit and focus |
+| `app.html` | The Nusuki app mockup, four screens, with the real voxel avatar |
+| `mockup.html` | The same characters built from plain divs in CSS 3D, no WebGL |
+| `tools/trace_*.py` | Scripts that sample the concept art for palette and proportions |
+
+### app.html — the avatar inside the app
+
+One `WebGLRenderer` on a single canvas floats above the whole UI with an
+alpha clear, and the 3D is drawn only inside scissor rectangles pinned to DOM
+slots (`#slot-home`, `#slot-avatar`), each with its own camera. That is how the
+avatar sits *inside* a card without the card's opaque background covering it —
+the canvas is on top, transparent everywhere except those rects. WebGL
+viewports start at the bottom-left, so the y of each slot's
+`getBoundingClientRect()` is flipped.
+
+Ticking an amal row moves XP and Nur Amanah, and when XP fills the track the
+rank advances and the avatar is rebuilt as the next rank — the app's premise is
+that the avatar reflects real deeds, so the mockup demonstrates that loop
+rather than describing it.
+
+### mockup.html — CSS-only characters
+
+For app views that cannot host WebGL. Each voxel is a div with six face
+children placed by `transform`, shaded by a fixed per-face `brightness()` that
+stands in for a key light. One constraint shapes the whole approach: CSS 3D
+sorts whole elements, not fragments, so two boxes that pass through each other
+flicker as they rotate. The Three.js renderer layers clothing as slightly
+larger boxes over a bare body, which cannot work here — so each part is a
+single box already coloured as its garment, and trim sits in its own y band or
+just outside in z. The page also prints the static markup for the selected
+character, so it can be pasted into a template with no JS at all.
+
 ## The cast
 
 | Rank | Name | Look |

@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nusuki Adab App</title>
+<style>
+/* =====================================================================
+   NUSUKI — app mockup, skinned to the voxel engine
+   Same design tokens as index.html, and the same voxel characters: one
+   WebGL canvas floats over the whole UI with an alpha clear, and the 3D
+   is drawn only inside scissor rectangles aligned to DOM slots. That is
+   how the avatar can sit "inside" a card without the card's opaque
+   background covering it.
+   ===================================================================== */
+:root{
+  --neon:#39ff6a;
+  --neon-body:#4dff52;
+  --bg:#020805;
+  --panel:rgba(4,20,10,.78);
+  --panel2:rgba(3,14,7,.95);
+  --line:rgba(57,255,106,.32);
+  --line-dim:rgba(57,255,106,.16);
+  --text:#cfeed8;
+  --text-dim:#5f9d74;
+  --text-muted:#3a6048;
+  --gold:#f0c02a;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:#010402; color:var(--text);
+  font-family:"Courier New",ui-monospace,monospace;
+  -webkit-font-smoothing:antialiased;
+  display:grid; place-items:center; min-height:100%;
+  padding:18px 14px;
+}
+/* dim field behind the phone so the neon reads */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(70% 50% at 50% 30%, rgba(57,255,106,.07), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(57,255,106,.022) 0 1px, transparent 1px 3px);
+}
+
+/* ------------------------------------------------------------ the phone */
+.phone{
+  position:relative; z-index:1;
+  width:min(392px, 100vw - 28px);
+  height:min(828px, 100vh - 36px);
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:26px;
+  box-shadow:0 0 0 7px #05100a, 0 0 44px rgba(57,255,106,.13);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+
+/* status bar */
+.sbar{
+  flex:0 0 auto; display:flex; align-items:center; gap:8px;
+  padding:9px 16px 7px; font-size:10px; letter-spacing:.14em; color:var(--text-dim);
+  border-bottom:1px solid var(--line-dim);
+}
+.sbar .brand{ color:var(--neon); letter-spacing:.22em; font-weight:700 }
+.sbar .sp{ flex:1 }
+.sbar .live{ color:var(--neon); font-size:9px; letter-spacing:.16em }
+.sbar .live b{ animation:blink 2.4s steps(1,end) infinite }
+@keyframes blink{ 0%,60%{opacity:1} 61%,100%{opacity:.25} }
+
+/* scrolling screen area */
+.body{ flex:1 1 auto; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch }
+.body::-webkit-scrollbar{ width:5px }
+.body::-webkit-scrollbar-thumb{ background:rgba(57,255,106,.22); border-radius:3px }
+.screen{ padding:14px 14px 20px; display:flex; flex-direction:column; gap:12px }
+
+/* ------------------------------------------------------------- panels */
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:5px;
+  padding:12px; box-shadow:inset 0 0 18px rgba(57,255,106,.05);
+}
+.k{ font-size:9.5px; letter-spacing:.2em; color:var(--text-dim) }
+.k.gold{ color:var(--gold) }
+h2.k{ margin:0 0 9px; font-weight:400 }
+
+/* greeting */
+.hello{ display:flex; align-items:flex-start; gap:10px }
+.hello .who{ flex:1; min-width:0 }
+.hello .as{ font-size:9.5px; letter-spacing:.2em; color:var(--text-muted) }
+.hello .nm{ font-size:19px; letter-spacing:.04em; color:#eafff0; margin:2px 0 3px }
+.hello .rk{ font-size:10px; letter-spacing:.16em; color:var(--neon) }
+.hello .cnt{ text-align:right; flex:0 0 auto }
+.hello .cnt b{ display:block; font-size:26px; color:var(--neon); line-height:1;
+  text-shadow:0 0 12px rgba(57,255,106,.5); font-variant-numeric:tabular-nums }
+.hello .cnt span{ font-size:8.5px; letter-spacing:.14em; color:var(--text-muted) }
+
+/* 3D slots -- the canvas draws here */
+.slot{ position:relative; border:1px solid var(--line-dim); border-radius:4px;
+  background:
+    radial-gradient(120% 75% at 50% 96%, rgba(57,255,106,.12), transparent 62%),
+    linear-gradient(#04120a, #061a0e);
+}
+#slot-home{ flex:0 0 76px; height:104px }
+#slot-avatar{ height:290px }
+.slot .cap{
+  position:absolute; left:0; right:0; bottom:5px; text-align:center;
+  font-size:8.5px; letter-spacing:.18em; color:var(--text-muted);
+}
+
+/* badges */
+.brow{ display:flex; gap:6px; flex-wrap:wrap }
+.bdg{
+  width:44px; padding:5px 2px 4px; text-align:center; border-radius:4px;
+  border:1px solid var(--line-dim); background:#07160d;
+}
+.bdg.on{ border-color:rgba(57,255,106,.55); box-shadow:0 0 9px rgba(57,255,106,.16) }
+.bdg.off{ opacity:.4 }
+.bdg .ic{ font-size:15px; line-height:1.1 }
+.bdg .nm{ font-size:7.5px; letter-spacing:.06em; color:var(--text-dim); margin-top:2px }
+.bgrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px }
+.bgrid .bdg{ width:auto }
+
+/* meters: the engine's segmented track */
+.mlab{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px }
+.mlab span{ font-size:9.5px; letter-spacing:.18em; color:var(--text-dim) }
+.mlab b{ font-size:11px; color:var(--neon); font-variant-numeric:tabular-nums }
+.track{ height:9px; background:#08190f; border:1px solid var(--line); display:flex; gap:2px; padding:2px }
+.track i{ flex:1; background:#0e2a18 }
+.track i.on{ background:var(--neon); box-shadow:0 0 6px rgba(57,255,106,.75) }
+.xpbar{ height:7px; background:#08190f; border:1px solid var(--line); overflow:hidden }
+.xpbar i{ display:block; height:100%; background:var(--neon);
+  box-shadow:0 0 10px rgba(57,255,106,.6); transition:width .45s ease }
+
+/* amal checklist */
+.arow{
+  display:flex; align-items:center; gap:10px; width:100%;
+  padding:9px 10px; margin-bottom:7px; text-align:left;
+  background:#07150c; border:1px solid var(--line-dim); border-radius:4px;
+  color:inherit; font:inherit; cursor:pointer; transition:.15s;
+}
+.arow:hover{ border-color:var(--line) }
+.arow:focus-visible{ outline:2px solid var(--neon); outline-offset:2px }
+.arow .chk{
+  flex:0 0 19px; width:19px; height:19px; border-radius:3px;
+  border:1px solid rgba(57,255,106,.4); display:grid; place-items:center;
+  font-size:11px; color:var(--text-muted); background:transparent;
+}
+.arow[aria-pressed="true"]{ border-color:rgba(57,255,106,.5); background:#0a2112 }
+.arow[aria-pressed="true"] .chk{ background:var(--neon); color:#031008; border-color:var(--neon) }
+.arow .ic{ flex:0 0 auto; font-size:15px }
+.arow .tx{ min-width:0 }
+.arow .t1{ display:block; font-size:11.5px; letter-spacing:.03em; color:#dcffe6 }
+.arow .t2{ display:block; font-size:9px; letter-spacing:.05em; color:var(--text-muted); margin-top:3px }
+
+/* stat tiles */
+.stats{ display:grid; grid-template-columns:1fr 1fr; gap:8px }
+.stat{ border:1px solid var(--line-dim); border-radius:4px; padding:9px 10px; background:#07150c }
+.stat .sl{ font-size:8.5px; letter-spacing:.16em; color:var(--text-muted) }
+.stat .sv{ font-size:20px; color:var(--neon); margin-top:3px; font-variant-numeric:tabular-nums }
+.stat .sv u{ font-size:9.5px; text-decoration:none; color:var(--text-dim); letter-spacing:.1em; margin-left:2px }
+
+/* filter chips */
+.chips{ display:flex; gap:6px; overflow-x:auto; padding-bottom:3px }
+.chip{
+  flex:0 0 auto; font:inherit; font-size:9.5px; letter-spacing:.14em; cursor:pointer;
+  padding:6px 10px; border-radius:3px; color:#9fd9b3;
+  background:rgba(4,20,10,.85); border:1px solid rgba(57,255,106,.28); transition:.15s;
+}
+.chip:hover{ color:#eafff0; border-color:var(--neon) }
+.chip[aria-pressed="true"]{ color:#031008; background:var(--neon); border-color:var(--neon) }
+.chip:focus-visible{ outline:2px solid var(--neon); outline-offset:2px }
+
+/* venue cards */
+.venue{ border:1px solid var(--line-dim); border-radius:5px; background:#07150c; padding:11px; margin-bottom:9px }
+.venue .top{ display:flex; gap:10px; align-items:flex-start }
+.venue .ico{
+  flex:0 0 40px; height:40px; display:grid; place-items:center; font-size:19px;
+  border:1px solid var(--line-dim); border-radius:4px; background:#04120a;
+}
+.venue .nm{ font-size:12.5px; color:#eafff0; letter-spacing:.02em }
+.venue .mt{ font-size:9px; letter-spacing:.1em; color:var(--text-muted); margin-top:3px }
+.venue .bot{ display:flex; align-items:flex-end; gap:10px; margin-top:10px;
+  padding-top:9px; border-top:1px solid var(--line-dim) }
+.venue .price{ flex:1 }
+.venue .old{ font-size:9.5px; color:var(--text-muted); text-decoration:line-through }
+.venue .new{ font-size:16px; color:var(--neon); font-variant-numeric:tabular-nums }
+.venue .note{ font-size:8px; letter-spacing:.13em; color:var(--text-muted) }
+.venue .bundle{ margin-top:8px; font-size:9px; letter-spacing:.1em; color:var(--gold) }
+button.act{
+  font:inherit; font-size:10px; letter-spacing:.14em; cursor:pointer;
+  padding:7px 12px; border-radius:3px; color:#031008;
+  background:var(--neon); border:1px solid var(--neon); transition:.15s;
+}
+button.act:hover{ filter:brightness(1.12) }
+button.act:focus-visible{ outline:2px solid #eafff0; outline-offset:2px }
+button.ghost{ background:rgba(4,20,10,.85); color:#9fd9b3; border-color:rgba(57,255,106,.28) }
+button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
+
+/* muhasabah */
+.solat{ border:1px solid var(--line-dim); border-radius:4px; background:#07150c; padding:10px; margin-bottom:8px }
+.solat .nm{ font-size:10.5px; letter-spacing:.16em; color:var(--text-dim); margin-bottom:8px }
+.moods{ display:flex; gap:6px }
+.mood{
+  flex:1; font:inherit; cursor:pointer; padding:7px 4px; border-radius:3px;
+  background:#04120a; border:1px solid var(--line-dim); color:var(--text-dim);
+  font-size:8.5px; letter-spacing:.08em; transition:.15s;
+}
+.mood .em{ display:block; font-size:16px; margin-bottom:2px; filter:grayscale(.6); transition:.15s }
+.mood:hover{ border-color:var(--line) }
+.mood[aria-pressed="true"]{ border-color:var(--neon); background:#0a2112; color:#dcffe6 }
+.mood[aria-pressed="true"] .em{ filter:none }
+.mood:focus-visible{ outline:2px solid var(--neon); outline-offset:2px }
+.ayah{ text-align:center; padding:14px 10px }
+.ayah .ar{ font-size:19px; line-height:1.9; color:#eafff0; font-family:"Traditional Arabic","Amiri",serif; direction:rtl }
+.ayah .tr{ font-size:11px; line-height:1.65; color:#96c7a7; margin-top:9px }
+.ayah .cite{ font-size:8.5px; letter-spacing:.18em; color:var(--text-muted); margin-top:7px }
+.note{ font-size:9.5px; line-height:1.6; color:var(--text-muted); letter-spacing:.02em }
+
+/* tab bar */
+.tabs{
+  flex:0 0 auto; display:flex; border-top:1px solid var(--line);
+  background:var(--panel2);
+}
+.tab{
+  flex:1; font:inherit; cursor:pointer; padding:9px 2px 8px;
+  background:none; border:0; border-top:2px solid transparent; color:var(--text-muted);
+  font-size:8.5px; letter-spacing:.14em; transition:.15s;
+}
+.tab .gl{ display:block; font-size:15px; margin-bottom:3px }
+.tab:hover{ color:var(--text-dim) }
+.tab[aria-selected="true"]{ color:var(--neon); border-top-color:var(--neon);
+  background:linear-gradient(rgba(57,255,106,.09), transparent) }
+.tab:focus-visible{ outline:2px solid var(--neon); outline-offset:-3px }
+
+/* toast */
+.toast{
+  position:absolute; left:50%; top:54px; translate:-50% 0; z-index:6;
+  background:var(--panel2); border:1px solid var(--neon); border-radius:4px;
+  padding:8px 14px; text-align:center; box-shadow:0 0 20px rgba(57,255,106,.22);
+  opacity:0; pointer-events:none; transition:opacity .25s, translate .25s;
+}
+.toast.show{ opacity:1; translate:-50% 6px }
+.toast b{ display:block; font-size:13px; color:var(--neon) }
+.toast span{ font-size:9px; letter-spacing:.14em; color:var(--text-dim) }
+
+/* the 3D layer: above the UI, transparent except inside its scissor rects */
+#gl{ position:fixed; inset:0; z-index:5; pointer-events:none }
+
+[hidden]{ display:none !important }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="sbar">
+    <span>9:41</span>
+    <span class="brand">NUSUKI</span>
+    <span class="sp"></span>
+    <span class="live"><b>●</b> LIVE</span>
+  </div>
+
+  <div class="body" id="body">
+
+    <!-- ============================ UTAMA ============================ -->
+    <section class="screen" id="s-utama">
+      <div class="card hello">
+        <div class="who">
+          <div class="as">ASSALAMUALAIKUM,</div>
+          <div class="nm">Ahmad Faris</div>
+          <div class="rk" id="u-rank">RANK 2 // PERANTAU</div>
+        </div>
+        <div class="cnt">
+          <b id="u-badges">4</b>
+          <span>BADGE</span>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex; gap:11px; align-items:stretch">
+        <div class="slot" id="slot-home"></div>
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:space-between">
+          <div>
+            <div class="k" style="margin-bottom:6px">BADGE DIPEROLEHI</div>
+            <div class="brow" id="u-brow"></div>
+          </div>
+          <div>
+            <div class="mlab" style="margin-top:9px">
+              <span id="xp-label">680 / 1000 XP → RANK 3</span><b id="xp-pct">68%</b>
+            </div>
+            <div class="xpbar"><i id="xp-bar" style="width:68%"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="mlab"><span>NUR AMANAH</span><b id="u-amanah">82/100</b></div>
+        <div class="track" id="u-track" role="img" aria-label="Nur Amanah"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="k">MUTABAAH AMAL HARI INI</h2>
+        <div id="amal-list"></div>
+      </div>
+    </section>
+
+    <!-- ============================ AVATAR =========================== -->
+    <section class="screen" id="s-avatar" hidden>
+      <div class="card">
+        <div class="slot" id="slot-avatar">
+          <div class="cap" id="a-cap">AHMAD FARIS — PERANTAU</div>
+        </div>
+        <p class="k" style="text-align:center; margin:10px 0 0; line-height:1.7">
+          AVATAR MENCERMINKAN AMALANMU YANG SEBENAR
+        </p>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="sl">KONSISTENSI</div><div class="sv" id="a-kons">82<u>%</u></div></div>
+        <div class="stat"><div class="sl">STREAK AKTIF</div><div class="sv">14<u>hari</u></div></div>
+        <div class="stat"><div class="sl">LANGKAH HARI INI</div><div class="sv">2.3<u>k</u></div></div>
+        <div class="stat"><div class="sl">XP TERKUMPUL</div><div class="sv" id="a-xp">680</div></div>
+      </div>
+
+      <div class="card">
+        <h2 class="k" id="a-bcount">BADGE — 4 / 20 DICAPAI</h2>
+        <div class="bgrid" id="a-bgrid"></div>
+      </div>
+    </section>
+
+    <!-- =========================== REKREASI ========================== -->
+    <section class="screen" id="s-rek" hidden>
+      <div class="card">
+        <h2 class="k" style="margin-bottom:4px">HUB REKREASI SUNNAH</h2>
+        <div class="k" style="color:var(--text-muted)">BERHAMPIRAN KAMU // BANGI, SELANGOR</div>
+      </div>
+      <div class="chips" id="rek-chips"></div>
+      <div id="rek-list"></div>
+    </section>
+
+    <!-- ========================== MUHASABAH ========================== -->
+    <section class="screen" id="s-muh" hidden>
+      <div class="card">
+        <h2 class="k" style="margin-bottom:4px">MUHASABAH SOLAT</h2>
+        <div class="k" style="color:var(--text-muted); line-height:1.7">
+          SABTU // 12 SEPT 2026 // TAHAP 02 — REFLEKSI KUALITI IBADAH
+        </div>
+      </div>
+      <div id="muh-list"></div>
+      <div class="card ayah">
+        <div class="ar">إِنَّ الصَّلَاةَ تَنْهَىٰ عَنِ الْفَحْشَاءِ وَالْمُنكَرِ</div>
+        <div class="tr">“Sesungguhnya solat itu mencegah daripada perbuatan keji dan mungkar.”</div>
+        <div class="cite">— AL-ANKABUT: 45</div>
+      </div>
+      <div class="card">
+        <p class="note" style="margin:0">
+          Muhasabah ini untuk bimbingan tarbiah sahaja. Murobbi memantau untuk taujihat —
+          bukan penilaian luaran semata-mata.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Navigasi"></nav>
+  <div class="toast" id="toast"><b id="toast-xp">+25 XP</b><span>AMAL DICATAT</span></div>
+</div>
+
+<canvas id="gl"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* =====================================================================
+   The voxel avatar, carried over from the renderer in index.html:
+   chamfered boxes, a painted portrait, world-space voxel UVs, Phong
+   sheen and two raking rim lights.
+   ===================================================================== */
+const NEON_BODY = 0x4dff52, NEON_SOFT = 0xb6ffa8;
+const BEVEL = 0.22, CELL = 1.05, TILE = 4, TILE_W = CELL * TILE;
+
+function voxelTile(){
+  const px = 40, s = TILE * px;
+  const c = document.createElement('canvas'); c.width = c.height = s;
+  const g = c.getContext('2d');
+  for (let y=0;y<TILE;y++) for (let x=0;x<TILE;x++){
+    const cx = x*px + px/2, cy = y*px + px/2, t = 1 - Math.random()*0.05;
+    const L = function(v){ return Math.round(v*t); };
+    const grd = g.createRadialGradient(cx, cy, px*0.08, cx, cy, px*0.78);
+    grd.addColorStop(0, 'rgb(255,255,255)');
+    grd.addColorStop(0.55, 'rgb('+L(246)+','+L(246)+','+L(246)+')');
+    grd.addColorStop(1, 'rgb('+L(207)+','+L(207)+','+L(207)+')');
+    g.fillStyle = grd; g.fillRect(x*px, y*px, px, px);
+    g.fillStyle = 'rgba(0,0,0,.10)';
+    g.fillRect(x*px, (y+1)*px-2, px, 2);
+    g.fillRect((x+1)*px-2, y*px, 2, px);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4;
+  return t;
+}
+function checkTile(){
+  const s = 48, c = document.createElement('canvas'); c.width = c.height = s;
+  const g = c.getContext('2d');
+  g.fillStyle = '#dedbd4'; g.fillRect(0,0,s,s);
+  g.fillStyle = '#35373a';
+  for (let y=0;y<s;y+=8) for (let x=0;x<s;x+=8) if (((x/8)+(y/8))%2===0) g.fillRect(x,y,8,8);
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = t.minFilter = THREE.NearestFilter;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(0.7, 0.7);
+  return t;
+}
+/* Each eye is an L: a brow bar with a descender on its inner edge. */
+function faceTexture(skinHex){
+  const cell = 24, n = 16, s = cell*n;
+  const c = document.createElement('canvas'); c.width = c.height = s;
+  const g = c.getContext('2d');
+  g.fillStyle = '#' + ('000000' + skinHex.toString(16)).slice(-6);
+  g.fillRect(0,0,s,s);
+  for (let y=0;y<n;y++) for (let x=0;x<n;x++){
+    g.fillStyle = 'rgba(255,255,255,'+(0.05+Math.random()*0.05).toFixed(3)+')';
+    g.fillRect(x*cell, y*cell, cell, 2);
+    g.fillRect(x*cell, y*cell, 2, cell);
+  }
+  const px = function(x,y,w,h){ g.fillRect(x*cell, y*cell, w*cell, h*cell); };
+  g.fillStyle = '#171310';
+  px(2.5,5,4,1.1); px(5.4,5,1.1,3.2);
+  px(9.4,5,4,1.1); px(9.4,5,1.1,3.2);
+  g.strokeStyle = '#6b4033'; g.lineWidth = cell*0.42; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(5.9*cell, 10.4*cell);
+  g.quadraticCurveTo(8*cell, 12.0*cell, 10.1*cell, 10.4*cell); g.stroke();
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+}
+const TEX = {vox:voxelTile(), check:checkTile()};
+
+/* A box with its 12 edges and 8 corners cut, cached per size: a scaled
+   unit cube cannot carry a bevel without stretching it into a wedge. */
+const geoCache = {};
+function chamferBox(w, h, d, faceGroup){
+  const key = w.toFixed(2)+'|'+h.toFixed(2)+'|'+d.toFixed(2)+(faceGroup?'|f':'');
+  if (geoCache[key]) return geoCache[key];
+  const X=w/2, Y=h/2, Z=d/2, E=[X,Y,Z];
+  const b = Math.min(BEVEL, X*0.45, Y*0.45, Z*0.45);
+  const vert = function(full, sx, sy, sz){
+    const sg=[sx,sy,sz];
+    return [0,1,2].map(function(a){ return (a===full ? E[a] : E[a]-b) * sg[a]; });
+  };
+  const tris=[];
+  const push=function(p0,p1,p2,face,sign){ tris.push({v:[p0,p1,p2],face:face,sign:sign}); };
+  for (let a=0;a<3;a++) for (let sgn=-1;sgn<=1;sgn+=2){
+    const o=[(a+1)%3,(a+2)%3];
+    const corner=function(i,j){ const sg=[0,0,0]; sg[a]=sgn; sg[o[0]]=i; sg[o[1]]=j;
+      return vert(a,sg[0],sg[1],sg[2]); };
+    const q=[corner(-1,-1),corner(1,-1),corner(1,1),corner(-1,1)];
+    push(q[0],q[1],q[2],a,sgn); push(q[0],q[2],q[3],a,sgn);
+  }
+  for (let a=0;a<3;a++) for (let bx=a+1;bx<3;bx++){
+    const other=3-a-bx;
+    for (let sa=-1;sa<=1;sa+=2) for (let sb=-1;sb<=1;sb+=2){
+      const mk=function(full,so){ const sg=[0,0,0]; sg[a]=sa; sg[bx]=sb; sg[other]=so;
+        return vert(full,sg[0],sg[1],sg[2]); };
+      push(mk(a,-1),mk(a,1),mk(bx,1),null); push(mk(a,-1),mk(bx,1),mk(bx,-1),null);
+    }
+  }
+  for (let sx=-1;sx<=1;sx+=2) for (let sy=-1;sy<=1;sy+=2) for (let sz=-1;sz<=1;sz+=2)
+    push(vert(0,sx,sy,sz), vert(1,sx,sy,sz), vert(2,sx,sy,sz), null);
+
+  const isFront=function(t){ return faceGroup && t.face===2 && t.sign===1; };
+  const ordered = tris.filter(function(t){ return !isFront(t); }).concat(tris.filter(isFront));
+  const pos=[], nor=[], uv=[];
+  ordered.forEach(function(t){
+    const p=t.v;
+    let n=[
+      (p[1][1]-p[0][1])*(p[2][2]-p[0][2]) - (p[1][2]-p[0][2])*(p[2][1]-p[0][1]),
+      (p[1][2]-p[0][2])*(p[2][0]-p[0][0]) - (p[1][0]-p[0][0])*(p[2][2]-p[0][2]),
+      (p[1][0]-p[0][0])*(p[2][1]-p[0][1]) - (p[1][1]-p[0][1])*(p[2][0]-p[0][0])
+    ];
+    const cen=[0,1,2].map(function(i){ return (p[0][i]+p[1][i]+p[2][i])/3; });
+    const order=(n[0]*cen[0]+n[1]*cen[1]+n[2]*cen[2])<0 ? [0,2,1] : [0,1,2];
+    if (order[1]===2) n=[-n[0],-n[1],-n[2]];
+    const len=Math.hypot(n[0],n[1],n[2])||1; n=[n[0]/len,n[1]/len,n[2]/len];
+    const ax = Math.abs(n[0])>=Math.abs(n[1]) && Math.abs(n[0])>=Math.abs(n[2]) ? 0
+             : Math.abs(n[1])>=Math.abs(n[2]) ? 1 : 2;
+    const front=isFront(t);
+    order.forEach(function(k){
+      const q=p[k];
+      pos.push(q[0],q[1],q[2]); nor.push(n[0],n[1],n[2]);
+      if (front) uv.push((q[0]+X)/w, (q[1]+Y)/h);
+      else if (ax===0) uv.push(q[2]/TILE_W, q[1]/TILE_W);
+      else if (ax===1) uv.push(q[0]/TILE_W, q[2]/TILE_W);
+      else uv.push(q[0]/TILE_W, q[1]/TILE_W);
+    });
+  });
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('normal',   new THREE.Float32BufferAttribute(nor,3));
+  g.setAttribute('uv',       new THREE.Float32BufferAttribute(uv,2));
+  if (faceGroup){ const n=ordered.length*3; g.addGroup(0,n-6,0); g.addGroup(n-6,6,1); }
+  geoCache[key]=g; return g;
+}
+
+function mat(color, o){
+  o = o || {};
+  const hard = o.shine === 'hard';
+  return new THREE.MeshPhongMaterial({
+    color: color,
+    map: o.map === null ? null : (o.map || TEX.vox),
+    specular: hard ? 0x5d6b5f : 0x22271f,
+    shininess: hard ? 34 : 11,
+    emissive: o.emissive !== undefined ? o.emissive : 0x000000,
+    emissiveIntensity: o.ei !== undefined ? o.ei : 1
+  });
+}
+function box(parent, o){
+  const m = new THREE.Mesh(chamferBox(o.w, o.h, o.d, Array.isArray(o.material)), o.material);
+  m.position.set(o.x||0, o.y||0, o.z||0);
+  if (o.rz) m.rotation.z = o.rz;
+  parent.add(m);
+  return m;
+}
+
+/* ---- body metrics, same skeleton as the renderer ---- */
+const P = {
+  footW:3.3, footH:1.7, footD:4.6, footZ:0.6, footY:0.85,
+  shinW:2.6, shinH:7.4, shinD:2.6, shinY:5.2,
+  thighW:3.0, thighH:8.0, thighD:3.0, thighY:12.9,
+  pelvisW:6.6, pelvisH:2.7, pelvisD:3.8, pelvisY:18.25,
+  torsoW:6.6, torsoH:7.4, torsoD:3.8, torsoY:23.3,
+  headW:8.0, headH:8.0, headD:8.0, headY:32.4,
+  uArmW:2.2, uArmH:6.0, uArmD:2.4, uArmY:24.0,
+  lArmW:2.0, lArmH:5.4, lArmD:2.2, lArmY:18.3,
+  handW:2.9, handH:2.6, handD:3.0, handY:14.4,
+  legX:1.75, armX:4.75, shoulderY:27.0
+};
+const PAD = 0.5;
+const SKIN = 0xf0aa6d, HAIR = 0x222221;
+
+const RANKS = [
+  {rank:1, name:'Anak Dagang', scale:0.77, shirt:0xa85c22, trim:0xc4762f,
+   sarung:0xe5dcc9, sarungLong:true, pants:0x6f4523, sandals:true, buttons:0xf0c02a,
+   headwear:'none', prop:null, neon:0},
+  {rank:2, name:'Perantau', scale:0.88, shirt:0x1a8798, trim:0x38b3c4,
+   sarung:null, pants:0x2b3a52, sandals:true, pack:true,
+   headwear:'none', prop:null, neon:0},
+  {rank:3, name:'Pendekar Muda', scale:0.92, shirt:0x1d2022, trim:0x2f4036,
+   sarung:'check', sarungLong:true, pants:0x111416, sandals:true, buttons:0x6ddb3a,
+   headwear:'songkok', prop:'baton', neon:0},
+  {rank:4, name:'Pahlawan Siber', scale:1.00, shirt:0x0e1312, trim:0x18221d,
+   sarung:0x0c100f, pants:0x0a0d0c, sandals:false, collar:0xe9eef0,
+   headwear:'tanijak', prop:'keris', neon:1},
+  {rank:5, name:'Adiguru', scale:1.18, shirt:0x080c0a, trim:0x0e1712,
+   sarung:0x080c0a, pants:0x060908, sandals:false,
+   headwear:'tanijak', prop:'keris', neon:2}
+];
+const EMIT = {1:{trace:0.26, plate:0.34, blade:0.58, amt:0.16},
+              2:{trace:0.85, plate:0.82, blade:1.10, amt:0.32}};
+
+function buildChar(cfg){
+  const g = new THREE.Group();
+  g.scale.setScalar(cfg.scale);
+  const pulse = [];
+  const lvl = cfg.neon;
+  const skin = mat(SKIN), hair = mat(HAIR), shirt = mat(cfg.shirt), trim = mat(cfg.trim);
+  const pants = mat(cfg.pants);
+  const plate = lvl ? mat(lvl===2?0x0b2c15:0x0a1a0f,
+      {emissive:NEON_BODY, ei:EMIT[lvl].plate, map:null, shine:'hard'}) : null;
+  if (plate) pulse.push({m:plate, base:EMIT[lvl].plate, amt:EMIT[lvl].amt});
+
+  [-1,1].forEach(function(s){
+    const x = s*P.legX;
+    box(g, {w:P.shinW+PAD, h:P.shinH+0.2, d:P.shinD+PAD, x:x, y:P.shinY+0.3, material:pants});
+    box(g, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:x, y:P.thighY, material:pants});
+    if (cfg.sandals){
+      box(g, {w:P.footW-0.4, h:1.1, d:P.footD-0.4, x:x, y:1.05, z:P.footZ, material:skin});
+      box(g, {w:P.footW, h:0.55, d:P.footD, x:x, y:0.28, z:P.footZ, material:mat(0xdcae74)});
+      box(g, {w:P.footW, h:0.4, d:1.1, x:x, y:1.35, z:P.footZ-1.5, material:mat(0xb98452)});
+    } else {
+      box(g, {w:P.footW+0.6, h:P.footH+0.8, d:P.footD+0.5, x:x, y:P.footY+0.4, z:P.footZ,
+              material:mat(0x0a0e0c)});
+      box(g, {w:P.footW+0.5, h:0.5, d:1.5, x:x, y:P.footY+1.3, z:P.footZ+1.4, material:plate});
+      box(g, {w:1.5, h:1.5, d:0.5, x:x, y:P.shinY+1.2, z:(P.shinD+PAD)/2+0.2, material:plate});
+    }
+  });
+
+  box(g, {w:P.torsoW, h:P.torsoH, d:P.torsoD, y:P.torsoY, material:skin});
+  const sarungH = cfg.sarungLong ? 9.4 : 5.4;
+  const sarungY = P.pelvisY + P.pelvisH/2 - sarungH/2;
+  const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEX.check})
+                  : cfg.sarung === null ? null : mat(cfg.sarung);
+  if (sarungMat) box(g, {w:P.pelvisW+PAD+0.7, h:sarungH, d:P.pelvisD+PAD+0.7, y:sarungY, material:sarungMat});
+  else box(g, {w:P.pelvisW+PAD, h:4.2, d:P.pelvisD+PAD, y:P.pelvisY-0.4, material:pants});
+  const beltY = P.pelvisY + P.pelvisH/2 - 0.35;
+  box(g, {w:P.pelvisW+PAD+1.0, h:lvl?0.8:1.1, d:P.pelvisD+PAD+1.0, y:beltY, material:lvl?plate:trim});
+  if (lvl) box(g, {w:1.9, h:1.5, d:0.6, y:beltY, z:(P.pelvisD+PAD+1.0)/2+0.2, material:plate});
+
+  box(g, {w:P.torsoW+PAD, h:P.torsoH+0.4, d:P.torsoD+PAD, y:P.torsoY-0.1, material:shirt});
+  box(g, {w:P.torsoW+PAD+0.2, h:1.0, d:P.torsoD+PAD+0.2, y:P.torsoY-P.torsoH/2-0.2, material:trim});
+  if (cfg.collar) box(g, {w:2.6, h:1.1, d:0.5, y:P.torsoY+P.torsoH/2-0.25,
+                          z:P.torsoD/2+PAD/2-0.1, material:mat(cfg.collar)});
+  box(g, {w:3.7, h:1.2, d:P.headD*0.36, y:P.torsoY+P.torsoH/2+0.4, material:trim});
+  box(g, {w:0.9, h:P.torsoH*0.76, d:0.35, y:P.torsoY+0.4, z:P.torsoD/2+PAD/2+0.12,
+          material:lvl?plate:trim});
+  if (cfg.buttons){
+    const btn = mat(cfg.buttons);
+    [1.5, 0.25].forEach(function(dy){
+      box(g, {w:0.6, h:0.6, d:0.3, y:P.torsoY+dy, z:P.torsoD/2+PAD/2+0.34, material:btn});
+    });
+  }
+  if (lvl) box(g, {w:1.6, h:1.6, d:0.5, y:P.torsoY+2.5, z:P.torsoD/2+PAD/2+0.16, material:plate});
+  box(g, {w:2.6, h:1.4, d:2.6, y:27.7, material:skin});
+
+  if (cfg.pack){
+    const zB = -(P.torsoD/2+1.9);
+    box(g, {w:5.6, h:7.4, d:3.0, y:P.torsoY+0.2, z:zB, material:mat(0x14181c)});
+    box(g, {w:5.8, h:1.5, d:3.2, y:P.torsoY+3.5, z:zB, material:mat(0x1b5d76)});
+    [-1,1].forEach(function(s){
+      box(g, {w:0.8, h:8.7, d:0.7, x:s*2.3, y:P.torsoY, z:P.torsoD/2+PAD/2+0.25, material:mat(0x1b5d76)});
+    });
+  }
+
+  /* head: the portrait rides the +z face group alone */
+  const head = new THREE.Group();
+  head.position.y = P.headY;
+  g.add(head);
+  const faceMat = new THREE.MeshPhongMaterial({color:0xffffff, map:faceTexture(SKIN),
+                                               specular:0x22271f, shininess:11});
+  box(head, {w:P.headW, h:P.headH, d:P.headD, material:[skin, faceMat]});
+  [-1,1].forEach(function(s){
+    box(head, {w:0.5, h:2.0, d:1.5, x:s*(P.headW/2+0.22), y:-0.2, z:-0.3, material:skin});
+  });
+  const hz = P.headD/2, hx = P.headW/2, cell = (P.headW+0.4)/4;
+  box(head, {w:P.headW+0.24, h:P.headH*0.74, d:1.1, y:0.5, z:-(hz+0.3), material:hair});
+  if (cfg.headwear === 'none'){
+    box(head, {w:P.headW+0.26, h:0.7, d:P.headD+0.24, y:P.headH/2+0.2, material:hair});
+    [[1,2,2,1],[1,2,2,2],[1,1,2,1],[1,1,1,1]].forEach(function(row, r){
+      row.forEach(function(v, q){
+        const h = 0.7 + v*0.72;
+        box(head, {w:cell+0.1, h:h, d:cell+0.1, x:(q-1.5)*cell,
+                   y:P.headH/2-0.3+h/2, z:(1.5-r)*cell-0.3, material:hair});
+      });
+    });
+    [-1.5,-0.5,0.5,1.5].forEach(function(q, i){
+      const drop = (i===0||i===3) ? 2.4 : 1.1;
+      box(head, {w:cell+0.1, h:drop, d:1.1, x:q*cell, y:P.headH/2-drop/2+0.1, z:hz+0.1, material:hair});
+    });
+    [-1,1].forEach(function(s){
+      box(head, {w:0.55, h:2.8, d:P.headD+0.2, x:s*(hx+0.38), y:P.headH/2-2.0, material:hair});
+    });
+  } else {
+    box(head, {w:P.headW+0.24, h:0.9, d:P.headD+0.24, y:P.headH/2-0.3, material:hair});
+  }
+  if (cfg.headwear === 'songkok'){
+    const felt = mat(0x13150f);
+    box(g, {w:P.headW+0.5, h:2.6, d:P.headD+0.5, y:P.headY+P.headH/2+1.1, material:felt});
+    box(g, {w:P.headW+0.15, h:0.45, d:P.headD+0.15, y:P.headY+P.headH/2+2.6, material:felt});
+  }
+  if (cfg.headwear === 'tanijak'){
+    const cloth = mat(lvl===2?0x0a1310:0x0d1311);
+    const trace = mat(lvl===2?0x0b2c15:0x0a1a0f,
+        {emissive:NEON_BODY, ei:lvl===2?0.95:0.30, map:null, shine:'hard'});
+    pulse.push({m:trace, base:lvl===2?0.95:0.30, amt:EMIT[lvl].amt});
+    const base = P.headY + P.headH/2;
+    box(g, {w:P.headW+0.8, h:1.9, d:P.headD+0.8, y:base+0.85, material:cloth});
+    box(g, {w:P.headW+0.9, h:0.26, d:P.headD+0.9, y:base+1.70, material:trace});
+    box(g, {w:P.headW+0.5, h:2.0, d:P.headD+0.5, y:base+2.70, material:cloth});
+    box(g, {w:5.0, h:1.8, d:0.7, y:base+2.6, z:P.headD/2+0.42, material:cloth});
+    box(g, {w:1.5, h:1.5, d:0.3, y:base+2.6, z:P.headD/2+0.80, rz:0.79, material:trace});
+    const capTop = base + 3.70;
+    [[4.4, lvl===2?4.2:3.5, 3.8, -0.8, 0.66], [3.3, lvl===2?2.7:2.3, 3.2, 2.0, -0.78]]
+      .forEach(function(f){
+        const half = f[1]/2;
+        const x = f[3] - half*Math.sin(f[4]);
+        const y = capTop - 1.15 + half*Math.cos(f[4]);
+        box(g, {w:f[0], h:f[1], d:f[2], x:x, y:y, rz:f[4], material:cloth});
+        box(g, {w:f[0]*0.16, h:f[1]*0.78, d:0.3, x:x, y:y, z:f[2]/2+0.1, rz:f[4], material:trace});
+      });
+    if (lvl === 2){
+      const spark = mat(0x2a7a33, {emissive:NEON_SOFT, ei:0.85, map:null, shine:'hard'});
+      pulse.push({m:spark, base:0.85, amt:0.5});
+      const sg = new THREE.Group(); sg.position.y = base + 6.4;
+      for (let i=0;i<7;i++){
+        const m = box(sg, {w:0.32, h:0.32, d:0.32, material:spark});
+        m.userData.r = 3.4 + (i%3)*1.1;
+        m.userData.y = ((i*7)%5)*1.1 - 1.6;
+        m.userData.a = i*0.9;
+      }
+      g.add(sg);
+      g.userData.sparks = sg;
+    }
+  }
+
+  /* arms on shoulder pivots, so a held prop sways with them */
+  const arms = [];
+  [-1,1].forEach(function(s){
+    const arm = new THREE.Group();
+    arm.position.set(s*P.armX, P.shoulderY, 0);
+    arm.userData.baseX = cfg.rank === 1 ? -0.42 : 0;
+    arm.userData.baseZ = (cfg.rank === 1 ? 0.23 : 0.03) * -s;
+    g.add(arm); arms.push(arm);
+    const rel = function(y){ return y - P.shoulderY; };
+    box(arm, {w:P.uArmW+PAD, h:P.uArmH+0.3, d:P.uArmD+PAD, y:rel(P.uArmY)-0.1, material:shirt});
+    box(arm, {w:P.lArmW+PAD, h:P.lArmH, d:P.lArmD+PAD, y:rel(P.lArmY), material:shirt});
+    box(arm, {w:P.lArmW+PAD+0.2, h:0.5, d:P.lArmD+PAD+0.2, y:rel(P.lArmY)-P.lArmH/2, material:trim});
+    box(arm, {w:P.handW, h:P.handH, d:P.handD, y:rel(P.handY),
+              material: lvl ? mat(0x0b100d) : skin});
+    if (lvl){
+      box(arm, {w:P.handW+0.4, h:0.42, d:P.handD+0.4, y:rel(P.handY)+P.handH/2, material:plate});
+      box(arm, {w:P.lArmW+PAD+0.3, h:0.6, d:P.lArmD+PAD+0.3, y:rel(P.lArmY)+1.9, material:plate});
+    }
+  });
+
+  const right = arms[1];
+  if (cfg.prop === 'baton'){
+    const p = new THREE.Group();
+    p.position.set(1.3, P.handY-P.shoulderY+0.2, 2.1);
+    p.rotation.z = 0.3; p.rotation.x = -0.34;
+    box(p, {w:1.1, h:7.6, d:1.1, material:mat(0x8a5f39)});
+    box(p, {w:1.25, h:1.0, d:1.25, y:1.6, material:mat(0x3c6b44)});
+    right.add(p);
+  } else if (cfg.prop === 'keris'){
+    const p = new THREE.Group();
+    p.position.set(1.8, P.handY-P.shoulderY+0.4, 2.3);
+    p.rotation.z = -0.24; p.rotation.x = -0.14;
+    const blade = mat(lvl===2?0x0b2c15:0x0a1a0f,
+        {emissive:NEON_BODY, ei:EMIT[lvl].blade, map:null, shine:'hard'});
+    const core = mat(lvl===2?0x9dffa0:0x336b34,
+        {emissive:NEON_SOFT, ei:lvl===2?1.5:0.6, map:null, shine:'hard'});
+    pulse.push({m:blade, base:EMIT[lvl].blade, amt:EMIT[lvl].amt});
+    pulse.push({m:core, base:lvl===2?1.5:0.6, amt:EMIT[lvl].amt});
+    box(p, {w:1.5, h:3.3, d:1.5, y:-1.9, rz:0.2, material:mat(lvl===2?0x123021:0x1b1f1d)});
+    box(p, {w:4.2, h:1.0, d:2.2, y:0.5, material:blade});
+    for (let i=0;i<8;i++){
+      const t=i/7, w=2.0-t*1.45, x=Math.sin(i*0.85)*0.3, y=1.7+i*1.3, rz=Math.sin(i*0.85)*0.07;
+      box(p, {w:w, h:1.5, d:0.7-t*0.28, x:x, y:y, rz:rz, material:blade});
+      box(p, {w:w*0.34, h:1.5, d:0.8-t*0.3, x:x, y:y, rz:rz, material:core});
+    }
+    right.add(p);
+  }
+
+  g.userData.pulse = pulse;
+  g.userData.arms = arms;
+  g.userData.head = head;
+  g.userData.neon = lvl;
+  return g;
+}
+
+/* =====================================================================
+   One renderer, one scene, two scissor viewports pinned to DOM slots
+   ===================================================================== */
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0);
+renderer.autoClear = false;
+
+const scene = new THREE.Scene();
+scene.add(new THREE.AmbientLight(0x2e3630, 0.68));
+scene.add(new THREE.HemisphereLight(0x477055, 0x05130b, 0.38));
+const key = new THREE.DirectionalLight(0xfff4e4, 0.92); key.position.set(-38,52,66); scene.add(key);
+const rim = new THREE.DirectionalLight(0x86ffa4, 0.26); rim.position.set(46,30,-58); scene.add(rim);
+const rim2 = new THREE.DirectionalLight(0xffd7a8, 0.26); rim2.position.set(-52,26,-50); scene.add(rim2);
+const lamp = new THREE.PointLight(0xb6ffcf, 0.8, 78, 2); lamp.position.set(0,46,12); scene.add(lamp);
+
+let avatar = null;
+function setRank(i){
+  if (avatar) scene.remove(avatar);
+  avatar = buildChar(RANKS[i]);
+  scene.add(avatar);
+}
+
+/* a camera per slot: the home one crops to the chest, the avatar screen
+   frames the whole figure */
+const SLOTS = [
+  {id:'slot-home',   screen:'s-utama',  cam:new THREE.PerspectiveCamera(34,1,0.5,400),
+   pos:[7,30,44], tgt:[0,25,0]},
+  {id:'slot-avatar', screen:'s-avatar', cam:new THREE.PerspectiveCamera(34,1,0.5,400),
+   pos:[10,26,76], tgt:[0,19,0]}
+];
+SLOTS.forEach(function(s){
+  s.el = document.getElementById(s.id);
+  s.cam.position.set(s.pos[0], s.pos[1], s.pos[2]);
+  s.cam.lookAt(s.tgt[0], s.tgt[1], s.tgt[2]);
+});
+
+function resize(){
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+}
+addEventListener('resize', resize);
+resize();
+
+let spin = -0.35, drag = null;
+SLOTS.forEach(function(s){
+  s.el.style.pointerEvents = 'auto';
+  s.el.addEventListener('pointerdown', function(e){
+    drag = {x:e.clientX, start:spin};
+    s.el.setPointerCapture(e.pointerId);
+  });
+  s.el.addEventListener('pointermove', function(e){
+    if (drag) spin = drag.start + (e.clientX - drag.x) * 0.012;
+  });
+  s.el.addEventListener('pointerup', function(){ drag = null; });
+});
+
+const clock = new THREE.Clock();
+function frame(){
+  requestAnimationFrame(frame);
+  const t = clock.getElapsedTime();
+  const W = window.innerWidth, H = window.innerHeight;
+
+  if (avatar){
+    avatar.position.y = Math.sin(t*1.25)*0.38;
+    avatar.rotation.y = spin + (drag ? 0 : Math.sin(t*0.3)*0.09);
+    avatar.userData.arms.forEach(function(arm, i){
+      arm.rotation.x = arm.userData.baseX + Math.sin(t*1.25 + (i?Math.PI:0))*0.05;
+      arm.rotation.z = arm.userData.baseZ + Math.sin(t*0.9)*0.02*(i?-1:1);
+    });
+    avatar.userData.head.rotation.y = Math.sin(t*0.45)*0.13;
+    const lvl = avatar.userData.neon;
+    if (lvl){
+      const w = Math.sin(t*(lvl===2?2.3:1.1));
+      avatar.userData.pulse.forEach(function(p){
+        p.m.emissiveIntensity = Math.max(0, p.base*(1 + p.amt*w));
+      });
+    }
+    const sg = avatar.userData.sparks;
+    if (sg) sg.children.forEach(function(m){
+      const a = t*0.55 + m.userData.a;
+      m.position.set(Math.cos(a)*m.userData.r,
+                     m.userData.y + Math.sin(t*1.5 + m.userData.a)*0.7,
+                     Math.sin(a)*m.userData.r);
+    });
+  }
+
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, W, H);
+  renderer.clear();                       // whole canvas back to transparent
+  renderer.setScissorTest(true);
+
+  SLOTS.forEach(function(s){
+    if (document.getElementById(s.screen).hidden) return;
+    const r = s.el.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > H) return;
+    // WebGL viewports start at the bottom-left, so flip y
+    const x = r.left, y = H - r.bottom, w = r.width, h = r.height;
+    renderer.setViewport(x, y, w, h);
+    renderer.setScissor(x, y, w, h);
+    s.cam.aspect = w / h;
+    s.cam.updateProjectionMatrix();
+    renderer.render(scene, s.cam);
+  });
+  renderer.setScissorTest(false);
+}
+
+/* =====================================================================
+   app state
+   ===================================================================== */
+const BADGES = [
+  {ic:'🕌', nm:'Subuh', on:true}, {ic:'🏹', nm:'Pemanah', on:true},
+  {ic:'🏊', nm:'Renang', on:true}, {ic:'🐴', nm:'Kuda', on:true},
+  {ic:'📖', nm:'Tilawah', on:false}, {ic:'⚽', nm:'Sukan', on:false},
+  {ic:'🤲', nm:'Qiam', on:false}, {ic:'📿', nm:'Zikir', on:false}
+];
+const AMAL = [
+  {ic:'🕌', t1:'Solat Subuh berjemaah', t2:'Masjid · 5:47 pagi', xp:25, done:true},
+  {ic:'📖', t1:'Tilawah al-Quran', t2:'1 muka surat · selesai', xp:20, done:true},
+  {ic:'🤝', t1:'Bantu ahli keluarga', t2:'Belum ditanda hari ini', xp:15, done:false},
+  {ic:'🏃', t1:'Aktiviti fizikal', t2:'Google Fit: 2,341 langkah', xp:20, done:false},
+  {ic:'🌙', t1:'Solat Sunat Rawatib', t2:'Belum ditanda', xp:15, done:false}
+];
+const VENUES = [
+  {cat:'BERKUDA', ic:'🐴', nm:'Pusat Berkuda Darul Hikmah',
+   mt:'8.1 KM // 4.6 ★ // AHAD–JUMAAT', old:'RM 80/sesi', neu:'RM 65',
+   bundle:'⬡ TABUNG 5 SESI — JIMAT RM 75'},
+  {cat:'BERENANG', ic:'🏊', nm:'Kolam KRIM Bangi',
+   mt:'2.3 KM // 4.9 ★ // SETIAP HARI', old:'RM 8/masuk', neu:'RM 5',
+   bundle:'⬡ TABUNG 20 SESI — JIMAT RM 60'},
+  {cat:'MEMANAH', ic:'🏹', nm:'Akademi Memanah Al-Fateh',
+   mt:'4.2 KM // 4.8 ★ // SABTU & AHAD', old:'RM 45/sesi', neu:'RM 35', bundle:null},
+  {cat:'LARIAN', ic:'🏃', nm:'Trek Larian Tasik Cempaka',
+   mt:'1.4 KM // 4.7 ★ // SETIAP HARI', old:'RM 0', neu:'BEBAS', bundle:null}
+];
+const SOLAT = ['SOLAT SUBUH', 'SOLAT ZOHOR', 'SOLAT ASAR'];
+const MOODS = [['😌','TENANG'], ['😰','TERGESA'], ['😴','MENGANTUK']];
+
+const state = {rank:1, xp:680, amanah:82, screen:'s-utama'};   // rank index, so RANK 2
+const NEXT_XP = 1000;
+
+function el(id){ return document.getElementById(id); }
+
+function renderBadges(){
+  el('u-brow').innerHTML = BADGES.filter(function(b){ return b.on; }).map(function(b){
+    return '<div class="bdg on"><div class="ic">'+b.ic+'</div><div class="nm">'+b.nm+'</div></div>';
+  }).join('');
+  el('a-bgrid').innerHTML = BADGES.map(function(b){
+    return '<div class="bdg '+(b.on?'on':'off')+'"><div class="ic">'+b.ic+
+           '</div><div class="nm">'+b.nm+'</div></div>';
+  }).join('');
+  const n = BADGES.filter(function(b){ return b.on; }).length;
+  el('u-badges').textContent = n;
+  el('a-bcount').textContent = 'BADGE — ' + n + ' / 20 DICAPAI';
+}
+
+function renderMeters(){
+  const c = RANKS[state.rank];
+  el('u-rank').textContent = 'RANK ' + c.rank + ' // ' + c.name.toUpperCase();
+  el('a-cap').textContent = 'AHMAD FARIS — ' + c.name.toUpperCase();
+  const pct = Math.min(100, Math.round(state.xp / NEXT_XP * 100));
+  el('xp-bar').style.width = pct + '%';
+  el('xp-pct').textContent = pct + '%';
+  el('xp-label').textContent = state.xp + ' / ' + NEXT_XP + ' XP → RANK ' +
+    Math.min(5, c.rank + 1);
+  el('a-xp').textContent = state.xp;
+  el('u-amanah').textContent = state.amanah + '/100';
+  el('a-kons').innerHTML = state.amanah + '<u>%</u>';
+  const track = el('u-track');
+  track.innerHTML = '';
+  const on = Math.round(state.amanah / 5);
+  for (let i=0;i<20;i++){
+    const b = document.createElement('i');
+    if (i < on) b.className = 'on';
+    track.appendChild(b);
+  }
+}
+
+function renderAmal(){
+  const list = el('amal-list');
+  list.innerHTML = '';
+  AMAL.forEach(function(a, i){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'arow';
+    b.setAttribute('aria-pressed', String(a.done));
+    b.innerHTML = '<span class="chk">'+(a.done?'✓':'')+'</span>' +
+                  '<span class="ic">'+a.ic+'</span>' +
+                  '<span class="tx"><span class="t1">'+a.t1+'</span>' +
+                  '<span class="t2">'+a.t2+'</span></span>';
+    b.addEventListener('click', function(){ toggleAmal(i, b); });
+    list.appendChild(b);
+  });
+}
+
+let toastTimer = null;
+function toast(msg){
+  el('toast-xp').textContent = msg;
+  const t = el('toast');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 1900);
+}
+
+function toggleAmal(i, btn){
+  const a = AMAL[i];
+  a.done = !a.done;
+  btn.setAttribute('aria-pressed', String(a.done));
+  btn.querySelector('.chk').textContent = a.done ? '✓' : '';
+  state.xp = Math.max(0, state.xp + (a.done ? a.xp : -a.xp));
+  state.amanah = Math.max(0, Math.min(100, state.amanah + (a.done ? 2 : -2)));
+  toast((a.done ? '+' : '−') + a.xp + ' XP');
+
+  /* the avatar reflects the deeds: fill the track and the rank advances */
+  while (state.xp >= NEXT_XP && state.rank < RANKS.length - 1){
+    state.xp -= NEXT_XP;
+    state.rank++;
+    setRank(state.rank);
+    toast('NAIK PANGKAT → ' + RANKS[state.rank].name.toUpperCase());
+  }
+  renderMeters();
+}
+
+function renderRek(){
+  const cats = ['SEMUA'].concat(VENUES.map(function(v){ return v.cat; }));
+  const chips = el('rek-chips');
+  chips.innerHTML = '';
+  cats.forEach(function(c, i){
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = c;
+    b.setAttribute('aria-pressed', String(i === 0));
+    b.addEventListener('click', function(){
+      chips.querySelectorAll('.chip').forEach(function(x){ x.setAttribute('aria-pressed','false'); });
+      b.setAttribute('aria-pressed','true');
+      drawVenues(c);
+    });
+    chips.appendChild(b);
+  });
+  drawVenues('SEMUA');
+}
+function drawVenues(cat){
+  el('rek-list').innerHTML = VENUES
+    .filter(function(v){ return cat === 'SEMUA' || v.cat === cat; })
+    .map(function(v){
+      return '<div class="venue"><div class="top">' +
+        '<div class="ico">'+v.ic+'</div>' +
+        '<div style="min-width:0"><div class="nm">'+v.nm+'</div>' +
+        '<div class="mt">'+v.mt+'</div></div></div>' +
+        '<div class="bot"><div class="price">' +
+        '<div class="old">'+v.old+'</div>' +
+        '<div class="new">'+v.neu+'</div>' +
+        '<div class="note">HARGA AHLI NUSUKI</div></div>' +
+        '<button class="act" type="button">TABUNG</button></div>' +
+        (v.bundle ? '<div class="bundle">'+v.bundle+'</div>' : '') +
+        '</div>';
+    }).join('');
+}
+
+function renderMuh(){
+  el('muh-list').innerHTML = SOLAT.map(function(s, si){
+    return '<div class="solat"><div class="nm">'+s+'</div><div class="moods">' +
+      MOODS.map(function(m, mi){
+        return '<button class="mood" type="button" aria-pressed="false" ' +
+               'data-s="'+si+'" data-m="'+mi+'">' +
+               '<span class="em">'+m[0]+'</span>'+m[1]+'</button>';
+      }).join('') + '</div></div>';
+  }).join('');
+  el('muh-list').addEventListener('click', function(e){
+    const b = e.target.closest('.mood');
+    if (!b) return;
+    b.parentNode.querySelectorAll('.mood').forEach(function(x){
+      x.setAttribute('aria-pressed','false');
+    });
+    b.setAttribute('aria-pressed','true');
+  });
+}
+
+const TABS = [
+  {id:'s-utama',  gl:'⌂', nm:'UTAMA'},
+  {id:'s-avatar', gl:'◉', nm:'AVATAR'},
+  {id:'s-rek',    gl:'◈', nm:'REKREASI'},
+  {id:'s-muh',    gl:'♡', nm:'MUHASABAH'}
+];
+function renderTabs(){
+  const bar = el('tabs');
+  TABS.forEach(function(t){
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tab';
+    b.setAttribute('role','tab');
+    b.setAttribute('aria-selected', String(t.id === state.screen));
+    b.setAttribute('aria-controls', t.id);
+    b.innerHTML = '<span class="gl">'+t.gl+'</span>'+t.nm;
+    b.addEventListener('click', function(){ go(t.id); });
+    bar.appendChild(b);
+  });
+}
+function go(id){
+  state.screen = id;
+  TABS.forEach(function(t, i){
+    el(t.id).hidden = t.id !== id;
+    el('tabs').children[i].setAttribute('aria-selected', String(t.id === id));
+  });
+  el('body').scrollTop = 0;
+}
+
+setRank(state.rank);
+renderBadges(); renderMeters(); renderAmal(); renderRek(); renderMuh(); renderTabs();
+frame();
+
+window.NUSUKI_APP = {state:state, scene:scene, renderer:renderer, go:go, setRank:setRank};
+</script>
+</body>
+</html>
