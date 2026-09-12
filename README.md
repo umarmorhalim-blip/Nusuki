@@ -32,6 +32,21 @@ rank advances and the avatar is rebuilt as the next rank — the app's premise i
 that the avatar reflects real deeds, so the mockup demonstrates that loop
 rather than describing it.
 
+Every glyph is an 8×8 pixel grid emitted as crisp 1×1 SVG rects in the app's
+palette, not an emoji: emoji are round, glossy and come from the system font,
+which reads as a different concept next to the voxels. `'C'` in a grid's
+palette paints with `currentColor`, which is how the tab icons pick up their
+active state without a second set of files.
+
+**One bug worth remembering.** `setSize(w, h, false)` skips writing
+`canvas.style.width/height`. A canvas is a *replaced* element, so with
+`width:auto` CSS resolves its used width to the **intrinsic** width — the
+drawing buffer, which is viewport × `devicePixelRatio` — rather than the
+`inset:0` box. On a 2× display the canvas was therefore laid out at 1040×1800
+in a 520×900 viewport, everything drew at double scale, and the avatar landed
+well outside its slot. Letting `setSize` write the style fixes it; testing at
+`deviceScaleFactor: 1` hides it completely.
+
 ### mockup.html — CSS-only characters
 
 For app views that cannot host WebGL. Each voxel is a div with six face

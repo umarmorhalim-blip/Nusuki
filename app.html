@@ -63,8 +63,10 @@ body::before{
 }
 .sbar .brand{ color:var(--neon); letter-spacing:.22em; font-weight:700 }
 .sbar .sp{ flex:1 }
-.sbar .live{ color:var(--neon); font-size:9px; letter-spacing:.16em }
-.sbar .live b{ animation:blink 2.4s steps(1,end) infinite }
+.sbar .live{ color:var(--neon); font-size:9px; letter-spacing:.16em;
+  display:flex; align-items:center; gap:5px }
+.sbar .live b{ width:5px; height:5px; background:var(--neon);
+  box-shadow:0 0 5px var(--neon); animation:blink 2.4s steps(1,end) infinite }
 @keyframes blink{ 0%,60%{opacity:1} 61%,100%{opacity:.25} }
 
 /* scrolling screen area */
@@ -114,7 +116,6 @@ h2.k{ margin:0 0 9px; font-weight:400 }
 }
 .bdg.on{ border-color:rgba(57,255,106,.55); box-shadow:0 0 9px rgba(57,255,106,.16) }
 .bdg.off{ opacity:.4 }
-.bdg .ic{ font-size:15px; line-height:1.1 }
 .bdg .nm{ font-size:7.5px; letter-spacing:.06em; color:var(--text-dim); margin-top:2px }
 .bgrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px }
 .bgrid .bdg{ width:auto }
@@ -146,7 +147,7 @@ h2.k{ margin:0 0 9px; font-weight:400 }
 }
 .arow[aria-pressed="true"]{ border-color:rgba(57,255,106,.5); background:#0a2112 }
 .arow[aria-pressed="true"] .chk{ background:var(--neon); color:#031008; border-color:var(--neon) }
-.arow .ic{ flex:0 0 auto; font-size:15px }
+.arow .ic{ flex:0 0 auto }
 .arow .tx{ min-width:0 }
 .arow .t1{ display:block; font-size:11.5px; letter-spacing:.03em; color:#dcffe6 }
 .arow .t2{ display:block; font-size:9px; letter-spacing:.05em; color:var(--text-muted); margin-top:3px }
@@ -173,7 +174,7 @@ h2.k{ margin:0 0 9px; font-weight:400 }
 .venue{ border:1px solid var(--line-dim); border-radius:5px; background:#07150c; padding:11px; margin-bottom:9px }
 .venue .top{ display:flex; gap:10px; align-items:flex-start }
 .venue .ico{
-  flex:0 0 40px; height:40px; display:grid; place-items:center; font-size:19px;
+  flex:0 0 40px; height:40px; display:grid; place-items:center;
   border:1px solid var(--line-dim); border-radius:4px; background:#04120a;
 }
 .venue .nm{ font-size:12.5px; color:#eafff0; letter-spacing:.02em }
@@ -204,10 +205,8 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
   background:#04120a; border:1px solid var(--line-dim); color:var(--text-dim);
   font-size:8.5px; letter-spacing:.08em; transition:.15s;
 }
-.mood .em{ display:block; font-size:16px; margin-bottom:2px; filter:grayscale(.6); transition:.15s }
 .mood:hover{ border-color:var(--line) }
 .mood[aria-pressed="true"]{ border-color:var(--neon); background:#0a2112; color:#dcffe6 }
-.mood[aria-pressed="true"] .em{ filter:none }
 .mood:focus-visible{ outline:2px solid var(--neon); outline-offset:2px }
 .ayah{ text-align:center; padding:14px 10px }
 .ayah .ar{ font-size:19px; line-height:1.9; color:#eafff0; font-family:"Traditional Arabic","Amiri",serif; direction:rtl }
@@ -225,7 +224,6 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
   background:none; border:0; border-top:2px solid transparent; color:var(--text-muted);
   font-size:8.5px; letter-spacing:.14em; transition:.15s;
 }
-.tab .gl{ display:block; font-size:15px; margin-bottom:3px }
 .tab:hover{ color:var(--text-dim) }
 .tab[aria-selected="true"]{ color:var(--neon); border-top-color:var(--neon);
   background:linear-gradient(rgba(57,255,106,.09), transparent) }
@@ -243,7 +241,21 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
 .toast span{ font-size:9px; letter-spacing:.14em; color:var(--text-dim) }
 
 /* the 3D layer: above the UI, transparent except inside its scissor rects */
-#gl{ position:fixed; inset:0; z-index:5; pointer-events:none }
+#gl{ position:fixed; inset:0; width:100%; height:100%; z-index:5; pointer-events:none }
+
+/* voxel icons */
+.vi{ display:block; width:16px; height:16px }
+.bdg .ic{ display:grid; place-items:center; height:18px }
+.bdg .vi{ width:17px; height:17px }
+.arow .ic{ display:grid; place-items:center }
+.venue .ico .vi{ width:21px; height:21px }
+.tab .gl{ display:grid; place-items:center; margin-bottom:4px }
+.tab .vi{ width:15px; height:15px }
+.mood .em{ display:grid; place-items:center; margin-bottom:3px }
+.mood .vi{ width:18px; height:18px }
+.arow .chk .vi{ width:12px; height:12px }
+.venue .bundle{ display:flex; align-items:center; gap:6px }
+.venue .bundle .vi{ width:11px; height:11px; flex:0 0 11px }
 
 [hidden]{ display:none !important }
 </style>
@@ -366,6 +378,71 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+/* =====================================================================
+   Voxel icon set. Emoji broke the concept -- they are round, glossy and
+   come from the system font -- so every glyph here is an 8x8 pixel grid
+   emitted as crisp 1x1 SVG rects, in the app's own palette. 'C' paints
+   with currentColor, which is how the tab icons pick up their active
+   state for free.
+   ===================================================================== */
+const ICONS = {
+  masjid:{p:['#39ff6a'], g:['...11...','..1111..','.1....1.','11111111',
+                            '1......1','1..11..1','1.1111.1','11111111']},
+  panah: {p:['#39ff6a','#0f3b1e','#f0c02a'],
+          g:['..1111..','.1....1.','1..22..1','1.2332.1',
+             '1.2332.1','1..22..1','.1....1.','..1111..']},
+  renang:{p:['#38b3c4'], g:['........','...11...','..1..1..','...11...',
+                            '........','11..11..','..11..11','11..11..']},
+  kuda:  {p:['#c4762f'], g:['..11....','.1111...','11111...','.111111.',
+                            '..111111','..1111..','..11.11.','..1...1.']},
+  kitab: {p:['#e5dcc9'], g:['........','.1....1.','11111111','1..11..1',
+                            '1..11..1','1..11..1','11111111','........']},
+  bola:  {p:['#9fd9b3'], g:['..1111..','.11..11.','1..11..1','1.1111.1',
+                            '1.1111.1','1..11..1','.11..11.','..1111..']},
+  bulan: {p:['#f0c02a'], g:['...111..','..11....','.11.....','.11.....',
+                            '.11.....','.11.....','..11....','...111..']},
+  tasbih:{p:['#38b3c4'], g:['..1111..','.1....1.','1......1','1......1',
+                            '1......1','.1....1.','..1..1..','...11...']},
+  bantu: {p:['#39ff6a'], g:['........','1.....1.','11...11.','.111111.',
+                            '.111111.','11...11.','1.....1.','........']},
+  lari:  {p:['#39ff6a'], g:['....11..','....11..','..1111..','.11.11..',
+                            '1...11..','....11..','...1..1.','..1....1']},
+  rumah: {p:['C'], g:['...11...','..1111..','.111111.','11111111',
+                      '.1....1.','.1.11.1.','.1.11.1.','.111111.']},
+  orang: {p:['C'], g:['..1111..','.111111.','.1.11.1.','.111111.',
+                      '..1111..','.111111.','11111111','11111111']},
+  wajik: {p:['C'], g:['...11...','..1111..','.111111.','11111111',
+                      '11111111','.111111.','..1111..','...11...']},
+  hati:  {p:['C'], g:['........','.11..11.','11111111','11111111',
+                      '.111111.','..1111..','...11...','........']},
+  tenang:{p:['C'], g:['........','.11..11.','..1..1..','..1..1..',
+                      '........','.1....1.','..1111..','........']},
+  gesa:  {p:['C','#f0c02a'], g:['.......2','.11..112','.11..11.','........',
+                                '..1111..','........','........','........']},
+  lena:  {p:['C','#f0c02a'], g:['......22','.....2..','.11..11.','........',
+                                '........','...11...','........','........']},
+  tik:   {p:['C'], g:['........','......11','.....11.','....11..',
+                      '1..11...','.1111...','..11....','........']},
+  hex:   {p:['#f0c02a'], g:['..1111..','.1....1.','1......1','1......1',
+                            '1......1','1......1','.1....1.','..1111..']}
+};
+function vi(name, px){
+  const d = ICONS[name];
+  let r = '';
+  d.g.forEach(function(row, y){
+    for (let x=0; x<row.length; x++){
+      const ch = row[x];
+      if (ch === '.') continue;
+      const col = d.p[+ch - 1];
+      r += '<rect x="'+x+'" y="'+y+'" width="1" height="1" fill="' +
+           (col === 'C' ? 'currentColor' : col) + '"/>';
+    }
+  });
+  return '<svg class="vi" viewBox="0 0 8 8" shape-rendering="crispEdges" ' +
+         'aria-hidden="true"' + (px ? ' style="width:'+px+'px;height:'+px+'px"' : '') +
+         '>' + r + '</svg>';
+}
+
 /* =====================================================================
    The voxel avatar, carried over from the renderer in index.html:
    chamfered boxes, a painted portrait, world-space voxel UVs, Phong
@@ -778,7 +855,12 @@ SLOTS.forEach(function(s){
 });
 
 function resize(){
-  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  /* setSize must be allowed to write style.width/height. A canvas is a
+     replaced element, so with width:auto CSS uses its *intrinsic* width --
+     the drawing buffer, i.e. viewport x devicePixelRatio -- rather than the
+     inset:0 box. On a 2x display that drew everything at double scale and
+     pushed the avatar clean out of its slot. */
+  renderer.setSize(window.innerWidth, window.innerHeight);
 }
 addEventListener('resize', resize);
 resize();
@@ -850,32 +932,32 @@ function frame(){
    app state
    ===================================================================== */
 const BADGES = [
-  {ic:'🕌', nm:'Subuh', on:true}, {ic:'🏹', nm:'Pemanah', on:true},
-  {ic:'🏊', nm:'Renang', on:true}, {ic:'🐴', nm:'Kuda', on:true},
-  {ic:'📖', nm:'Tilawah', on:false}, {ic:'⚽', nm:'Sukan', on:false},
-  {ic:'🤲', nm:'Qiam', on:false}, {ic:'📿', nm:'Zikir', on:false}
+  {ic:'masjid', nm:'Subuh', on:true},  {ic:'panah',  nm:'Pemanah', on:true},
+  {ic:'renang', nm:'Renang', on:true}, {ic:'kuda',   nm:'Kuda', on:true},
+  {ic:'kitab',  nm:'Tilawah', on:false}, {ic:'bola', nm:'Sukan', on:false},
+  {ic:'bulan',  nm:'Qiam', on:false},  {ic:'tasbih', nm:'Zikir', on:false}
 ];
 const AMAL = [
-  {ic:'🕌', t1:'Solat Subuh berjemaah', t2:'Masjid · 5:47 pagi', xp:25, done:true},
-  {ic:'📖', t1:'Tilawah al-Quran', t2:'1 muka surat · selesai', xp:20, done:true},
-  {ic:'🤝', t1:'Bantu ahli keluarga', t2:'Belum ditanda hari ini', xp:15, done:false},
-  {ic:'🏃', t1:'Aktiviti fizikal', t2:'Google Fit: 2,341 langkah', xp:20, done:false},
-  {ic:'🌙', t1:'Solat Sunat Rawatib', t2:'Belum ditanda', xp:15, done:false}
+  {ic:'masjid', t1:'Solat Subuh berjemaah', t2:'Masjid · 5:47 pagi', xp:25, done:true},
+  {ic:'kitab', t1:'Tilawah al-Quran', t2:'1 muka surat · selesai', xp:20, done:true},
+  {ic:'bantu', t1:'Bantu ahli keluarga', t2:'Belum ditanda hari ini', xp:15, done:false},
+  {ic:'lari', t1:'Aktiviti fizikal', t2:'Google Fit: 2,341 langkah', xp:20, done:false},
+  {ic:'bulan', t1:'Solat Sunat Rawatib', t2:'Belum ditanda', xp:15, done:false}
 ];
 const VENUES = [
-  {cat:'BERKUDA', ic:'🐴', nm:'Pusat Berkuda Darul Hikmah',
+  {cat:'BERKUDA', ic:'kuda', nm:'Pusat Berkuda Darul Hikmah',
    mt:'8.1 KM // 4.6 ★ // AHAD–JUMAAT', old:'RM 80/sesi', neu:'RM 65',
-   bundle:'⬡ TABUNG 5 SESI — JIMAT RM 75'},
-  {cat:'BERENANG', ic:'🏊', nm:'Kolam KRIM Bangi',
+   bundle:'TABUNG 5 SESI — JIMAT RM 75'},
+  {cat:'BERENANG', ic:'renang', nm:'Kolam KRIM Bangi',
    mt:'2.3 KM // 4.9 ★ // SETIAP HARI', old:'RM 8/masuk', neu:'RM 5',
-   bundle:'⬡ TABUNG 20 SESI — JIMAT RM 60'},
-  {cat:'MEMANAH', ic:'🏹', nm:'Akademi Memanah Al-Fateh',
+   bundle:'TABUNG 20 SESI — JIMAT RM 60'},
+  {cat:'MEMANAH', ic:'panah', nm:'Akademi Memanah Al-Fateh',
    mt:'4.2 KM // 4.8 ★ // SABTU & AHAD', old:'RM 45/sesi', neu:'RM 35', bundle:null},
-  {cat:'LARIAN', ic:'🏃', nm:'Trek Larian Tasik Cempaka',
+  {cat:'LARIAN', ic:'lari', nm:'Trek Larian Tasik Cempaka',
    mt:'1.4 KM // 4.7 ★ // SETIAP HARI', old:'RM 0', neu:'BEBAS', bundle:null}
 ];
 const SOLAT = ['SOLAT SUBUH', 'SOLAT ZOHOR', 'SOLAT ASAR'];
-const MOODS = [['😌','TENANG'], ['😰','TERGESA'], ['😴','MENGANTUK']];
+const MOODS = [['tenang','TENANG'], ['gesa','TERGESA'], ['lena','MENGANTUK']];
 
 const state = {rank:1, xp:680, amanah:82, screen:'s-utama'};   // rank index, so RANK 2
 const NEXT_XP = 1000;
@@ -884,10 +966,10 @@ function el(id){ return document.getElementById(id); }
 
 function renderBadges(){
   el('u-brow').innerHTML = BADGES.filter(function(b){ return b.on; }).map(function(b){
-    return '<div class="bdg on"><div class="ic">'+b.ic+'</div><div class="nm">'+b.nm+'</div></div>';
+    return '<div class="bdg on"><div class="ic">'+vi(b.ic)+'</div><div class="nm">'+b.nm+'</div></div>';
   }).join('');
   el('a-bgrid').innerHTML = BADGES.map(function(b){
-    return '<div class="bdg '+(b.on?'on':'off')+'"><div class="ic">'+b.ic+
+    return '<div class="bdg '+(b.on?'on':'off')+'"><div class="ic">'+vi(b.ic)+
            '</div><div class="nm">'+b.nm+'</div></div>';
   }).join('');
   const n = BADGES.filter(function(b){ return b.on; }).length;
@@ -925,8 +1007,8 @@ function renderAmal(){
     b.type = 'button';
     b.className = 'arow';
     b.setAttribute('aria-pressed', String(a.done));
-    b.innerHTML = '<span class="chk">'+(a.done?'✓':'')+'</span>' +
-                  '<span class="ic">'+a.ic+'</span>' +
+    b.innerHTML = '<span class="chk">'+(a.done?vi('tik'):'')+'</span>' +
+                  '<span class="ic">'+vi(a.ic)+'</span>' +
                   '<span class="tx"><span class="t1">'+a.t1+'</span>' +
                   '<span class="t2">'+a.t2+'</span></span>';
     b.addEventListener('click', function(){ toggleAmal(i, b); });
@@ -947,7 +1029,7 @@ function toggleAmal(i, btn){
   const a = AMAL[i];
   a.done = !a.done;
   btn.setAttribute('aria-pressed', String(a.done));
-  btn.querySelector('.chk').textContent = a.done ? '✓' : '';
+  btn.querySelector('.chk').innerHTML = a.done ? vi('tik') : '';
   state.xp = Math.max(0, state.xp + (a.done ? a.xp : -a.xp));
   state.amanah = Math.max(0, Math.min(100, state.amanah + (a.done ? 2 : -2)));
   toast((a.done ? '+' : '−') + a.xp + ' XP');
@@ -984,7 +1066,7 @@ function drawVenues(cat){
     .filter(function(v){ return cat === 'SEMUA' || v.cat === cat; })
     .map(function(v){
       return '<div class="venue"><div class="top">' +
-        '<div class="ico">'+v.ic+'</div>' +
+        '<div class="ico">'+vi(v.ic)+'</div>' +
         '<div style="min-width:0"><div class="nm">'+v.nm+'</div>' +
         '<div class="mt">'+v.mt+'</div></div></div>' +
         '<div class="bot"><div class="price">' +
@@ -992,7 +1074,7 @@ function drawVenues(cat){
         '<div class="new">'+v.neu+'</div>' +
         '<div class="note">HARGA AHLI NUSUKI</div></div>' +
         '<button class="act" type="button">TABUNG</button></div>' +
-        (v.bundle ? '<div class="bundle">'+v.bundle+'</div>' : '') +
+        (v.bundle ? '<div class="bundle">'+vi('hex')+'<span>'+v.bundle+'</span></div>' : '') +
         '</div>';
     }).join('');
 }
@@ -1003,7 +1085,7 @@ function renderMuh(){
       MOODS.map(function(m, mi){
         return '<button class="mood" type="button" aria-pressed="false" ' +
                'data-s="'+si+'" data-m="'+mi+'">' +
-               '<span class="em">'+m[0]+'</span>'+m[1]+'</button>';
+               '<span class="em">'+vi(m[0])+'</span>'+m[1]+'</button>';
       }).join('') + '</div></div>';
   }).join('');
   el('muh-list').addEventListener('click', function(e){
@@ -1017,10 +1099,10 @@ function renderMuh(){
 }
 
 const TABS = [
-  {id:'s-utama',  gl:'⌂', nm:'UTAMA'},
-  {id:'s-avatar', gl:'◉', nm:'AVATAR'},
-  {id:'s-rek',    gl:'◈', nm:'REKREASI'},
-  {id:'s-muh',    gl:'♡', nm:'MUHASABAH'}
+  {id:'s-utama',  gl:'rumah', nm:'UTAMA'},
+  {id:'s-avatar', gl:'orang', nm:'AVATAR'},
+  {id:'s-rek',    gl:'wajik', nm:'REKREASI'},
+  {id:'s-muh',    gl:'hati',  nm:'MUHASABAH'}
 ];
 function renderTabs(){
   const bar = el('tabs');
@@ -1030,7 +1112,7 @@ function renderTabs(){
     b.setAttribute('role','tab');
     b.setAttribute('aria-selected', String(t.id === state.screen));
     b.setAttribute('aria-controls', t.id);
-    b.innerHTML = '<span class="gl">'+t.gl+'</span>'+t.nm;
+    b.innerHTML = '<span class="gl">'+vi(t.gl)+'</span>'+t.nm;
     b.addEventListener('click', function(){ go(t.id); });
     bar.appendChild(b);
   });
