@@ -498,3 +498,67 @@ they tick) and a `drift` (which way they are heading), and a seeded LCG honours
 both — so the trend line, the heatmap and the triage reason for one person all
 agree with each other. Silence is literal: a mutarabbi who has not written for
 six days has six empty columns, and the charts do not quietly fill them in.
+
+## The XP economy and the Kedai (`app.html`)
+
+XP is spendable: it buys goods, and the *kind* of goods is gated on having
+actually done the activity.
+
+### The conflict that had to be resolved first
+
+XP was one number doing two jobs — it filled the rank track *and* it is now the
+currency. Those cannot be the same number: buying a saddle would demote you,
+and a player who spends is punished for spending. So it splits into two
+readings of the same earning:
+
+- **`xpLife`** — every XP ever earned. Drives the rank. Never decreases.
+- **`wallet`** — what is left after spending. Drives the shop.
+
+One amal pays into both. The player still "spends XP", which is how the idea
+was put; they just cannot spend their rank away. The rank bar now reads
+`xpLife % NEXT_XP`, so a purchase cannot pull it backwards.
+
+### Gates
+
+An item is never gated on XP. XP only says whether you can *afford* it — the
+**right** to own a thing comes from having done the activity, and that is
+deliberately unbuyable. Three kinds:
+
+| Gate | Meaning | Example |
+|---|---|---|
+| `asas` | none — XP alone, and nothing rare lives here | Sejadah Lipat, 180 XP |
+| `kira` | N sessions logged | Goggle Renang needs renang ×3 |
+| `lulus` | a named level passed — an assessment, not a counter | Pelana needs *Mahir* Berkuda |
+
+The three levels are `asas` → `mahir` → `tauliah`. `Kuda Sendiri` at 4,200 XP
+needs *Bertauliah*, so it is unreachable by grinding amal alone.
+
+**This has a property worth naming**, because it is what keeps the shop from
+becoming pay-to-win over ibadah: amal earns the *means*, but the sunnah
+activity earns the *permission*. No amount of solat unlocks a saddle; only
+riding does. `beli()` re-checks both conditions at the moment of purchase, so a
+button rendered before an amal was un-ticked cannot be used to slip through.
+
+### Ubah rupa
+
+Deliberately small, as asked: **face shape and four colours**. A long face is
+not just a taller box — the chin has to stay on the neck, so the extra height
+is added upward and the head's centre moves with it (`hY = P.headY + (hH −
+P.headH)/2`), and depth follows width so the head does not read as a slab.
+Skin colour reaches the painted face texture too, not only the sides.
+
+The garment *silhouette* stays the rank's; only its colours are the player's.
+The avatar's job is still to report the rank.
+
+One note: the shape chips carry a preview box in the proportion they set, but
+**exaggerated** — at the true ratio (1.06/0.94 vs 0.93/1.12) the three previews
+differed by under a pixel and looked identical.
+
+### app.html got the same robustness treatment
+
+It shipped with the same cdnjs tag that came up empty in the mobile artifact
+webview. three.js now ships beside the page, the texture cache is lazy, and the
+renderer lives in a guarded `boot3D()` — verified with three.js blocked
+outright: all five screens still render, the slots say *"avatar tak dapat
+dimuat"* instead of sitting empty, and `renderFloatBadges` no-ops rather than
+throwing on a null scene.

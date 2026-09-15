@@ -268,6 +268,73 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
 .venue .bundle .vi{ width:11px; height:11px; flex:0 0 11px }
 
 [hidden]{ display:none !important }
+
+/* ======================= ubah rupa & kedai ======================== */
+.rgrp{margin-bottom:15px}
+.rgrp:last-child{margin-bottom:0}
+.rlab{font-size:9.5px; letter-spacing:.2em; color:var(--text-muted);
+  margin-bottom:8px}
+.rrow{display:flex; gap:7px; flex-wrap:wrap}
+.sw{width:34px; height:34px; border-radius:9px; border:2px solid transparent;
+  cursor:pointer; padding:0; position:relative}
+.sw[aria-pressed=true]{border-color:var(--neon)}
+.sw[aria-pressed=true]::after{content:''; position:absolute; inset:-5px;
+  border-radius:12px; border:1px solid rgba(57,255,106,.35)}
+.shape{background:none; border:1px solid var(--line); border-radius:9px;
+  color:var(--text-muted); font:inherit; font-size:9.5px; letter-spacing:.14em;
+  padding:9px 11px; cursor:pointer; display:flex; align-items:center; gap:7px}
+.shape[aria-pressed=true]{border-color:var(--neon); color:var(--text)}
+/* the chip's box carries the proportion it sets, exaggerated -- at the
+   true ratio the three previews differed by under a pixel */
+.shape i{display:block; background:currentColor; border-radius:2px;
+  flex:none}
+
+.purse{display:flex; align-items:center; gap:14px; justify-content:space-between}
+.purse .pv{font-size:34px; font-weight:700;
+  letter-spacing:-.02em; color:var(--neon); line-height:1.1; margin-top:3px}
+.purse .pv u{text-decoration:none; font-size:12px; margin-left:5px;
+  color:var(--text-muted)}
+.purse .pn{font-size:10px; letter-spacing:.11em; color:var(--text-muted);
+  text-align:right; line-height:1.85}
+
+.aktr{display:grid; grid-template-columns:22px minmax(0,1fr) 76px; gap:10px;
+  align-items:center; padding:8px 0; border-top:1px solid var(--line)}
+.aktr:first-child{border-top:0}
+.aktr .an{font-size:12px}
+.aktr .ab{height:5px; border-radius:3px; background:#12241a; overflow:hidden;
+  margin-top:5px}
+.aktr .ab i{display:block; height:100%; background:var(--neon);
+  border-radius:3px}
+.aktr .av{font-size:9.5px; letter-spacing:.06em; color:var(--text-muted);
+  text-align:right; line-height:1.55}
+.aktr .av.pass{color:var(--neon)}
+
+.item{display:grid; grid-template-columns:44px 1fr auto; gap:12px;
+  align-items:center; padding:13px; margin-bottom:9px}
+.item .ii{width:44px; height:44px; border-radius:10px; background:#0e1c13;
+  display:grid; place-items:center; overflow:hidden}
+.item .ii img{width:34px; height:34px}
+.item.lock .ii, .item.lock .it{opacity:.42}
+.item .it{font-size:13.5px; font-weight:600}
+.item .is{font-size:10px; letter-spacing:.1em; color:var(--text-muted);
+  margin-top:3px}
+.item .buy{font-size:12px; font-weight:700;
+  background:var(--neon); color:#04120a; border:0; border-radius:9px;
+  padding:9px 12px; cursor:pointer; white-space:nowrap}
+.item .buy[disabled]{background:#16281d; color:var(--text-muted);
+  cursor:not-allowed}
+.item .own{font-size:9.5px; letter-spacing:.14em; color:var(--neon);
+  border:1px solid rgba(57,255,106,.4); border-radius:7px; padding:7px 9px;
+  white-space:nowrap}
+.item .gate{font-size:9.5px; letter-spacing:.09em; color:var(--gold);
+  line-height:1.6; text-align:right; max-width:124px}
+.rare{font-size:8.5px; letter-spacing:.14em; color:var(--gold);
+  border:1px solid rgba(240,192,42,.4); border-radius:4px; padding:1px 4px;
+  margin-left:6px; vertical-align:1px}
+.slot.noglass::after{content:'AVATAR TAK DAPAT DIMUAT'; position:absolute;
+  inset:0; display:grid; place-items:center; font-size:9.5px;
+  letter-spacing:.18em; color:var(--text-muted); text-align:center;
+  padding:0 16px; line-height:1.9}
 </style>
 </head>
 <body>
@@ -342,9 +409,40 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
       </div>
 
       <div class="card">
+        <h2 class="k" style="margin-bottom:3px">UBAH RUPA</h2>
+        <p class="k" style="color:var(--text-muted); margin:0 0 13px;
+           line-height:1.6">BENTUK MUKA DAN WARNA SAHAJA — PAKAIAN IKUT PANGKAT</p>
+        <div id="rupa"></div>
+      </div>
+
+      <div class="card">
         <h2 class="k" id="a-bcount">BADGE — 4 / 20 DICAPAI</h2>
         <div class="bgrid" id="a-bgrid"></div>
       </div>
+    </section>
+
+    <!-- ============================ KEDAI =========================== -->
+    <section class="screen" id="s-kedai" hidden>
+      <div class="card purse">
+        <div>
+          <div class="k" style="color:var(--text-muted)">BAKI XP</div>
+          <div class="pv"><span class="wallet-v">680</span><u>XP</u></div>
+        </div>
+        <div class="pn">
+          XP dibelanja di sini.<br>Pangkat tak berkurang.
+        </div>
+      </div>
+
+      <div class="card" style="padding-bottom:13px">
+        <h2 class="k" style="margin-bottom:3px">KUNCI AKTIVITI</h2>
+        <p class="k" style="color:var(--text-muted); margin:0 0 12px;
+           line-height:1.6">BARANG RARE TAK BOLEH DIBELI DENGAN XP SAHAJA —
+          KENA BUAT AKTIVITINYA</p>
+        <div id="akt"></div>
+      </div>
+
+      <div class="chips" id="kedai-chips"></div>
+      <div id="kedai-list"></div>
     </section>
 
     <!-- =========================== REKREASI ========================== -->
@@ -386,7 +484,15 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
 
 <canvas id="gl"></canvas>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- Beside the page, not from a CDN. The murabbi dashboard shipped with
+     a cdnjs tag, it did not load inside the mobile artifact webview, and
+     every dynamic panel came up empty. Same tag, same failure waiting. -->
+<script src="vendor/three.min.js"></script>
+<script>
+if (typeof THREE === 'undefined')
+  document.write('<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/'
+    + 'libs/three.js/r128/three.min.js"></scr' + 'ipt>');
+</script>
 <script>
 /* =====================================================================
    Voxel icon set. Emoji broke the concept -- they are round, glossy and
@@ -438,6 +544,10 @@ const ICONS = {
                                         shape belongs to `panah` */
           g:['...11...','...11...','...11...','11122111',
              '11122111','...11...','...11...','...11...']},
+  silat: {p:['#39ff6a','#9fd9b3'],   /* a keris: wavy blade over a hilt --
+                                       `bantu` is a heart and read as one */
+          g:['.....11.','....11..','...11...','....11..',
+             '...11...','..1111..','.122221.','..1111..']},
   hex:   {p:['#f0c02a'], g:['..1111..','.1....1.','1......1','1......1',
                             '1......1','1......1','.1....1.','..1111..']}
 };
@@ -572,7 +682,13 @@ function faceTexture(skinHex){
   g.quadraticCurveTo(8*cell, 12.0*cell, 10.1*cell, 10.4*cell); g.stroke();
   const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
 }
-const TEX = {vox:voxelTile(), check:checkTile()};
+/* built on first use, not at parse time: nothing in the lists needs a
+   WebGL texture, and the page has to survive three.js not arriving */
+let _tex = null;
+function TEXTURES(){
+  if (!_tex) _tex = {vox:voxelTile(), check:checkTile()};
+  return _tex;
+}
 
 /* A box with its 12 edges and 8 corners cut, cached per size: a scaled
    unit cube cannot carry a bevel without stretching it into a wedge. */
@@ -645,7 +761,7 @@ function mat(color, o){
   const hard = o.shine === 'hard';
   return new THREE.MeshPhongMaterial({
     color: color,
-    map: o.map === null ? null : (o.map || TEX.vox),
+    map: o.map === null ? null : (o.map || TEXTURES().vox),
     specular: hard ? 0x5d6b5f : 0x22271f,
     shininess: hard ? 34 : 11,
     emissive: o.emissive !== undefined ? o.emissive : 0x000000,
@@ -701,7 +817,12 @@ function buildChar(cfg){
   g.scale.setScalar(cfg.scale);
   const pulse = [];
   const lvl = cfg.neon;
-  const skin = mat(SKIN), hair = mat(HAIR), shirt = mat(cfg.shirt), trim = mat(cfg.trim);
+  /* Skin, hair and face shape are the player's, not the rank's. The rank
+     supplies the garments; everything above the collar comes from the
+     setup screen. */
+  const skinHex = cfg.skin || SKIN, hairHex = cfg.hair || HAIR;
+  const skin = mat(skinHex), hair = mat(hairHex);
+  const shirt = mat(cfg.shirt), trim = mat(cfg.trim);
   const pants = mat(cfg.pants);
   const plate = lvl ? mat(lvl===2?0x0b2c15:0x0a1a0f,
       {emissive:NEON_BODY, ei:EMIT[lvl].plate, map:null, shine:'hard'}) : null;
@@ -726,7 +847,7 @@ function buildChar(cfg){
   box(g, {w:P.torsoW, h:P.torsoH, d:P.torsoD, y:P.torsoY, material:skin});
   const sarungH = cfg.sarungLong ? 9.4 : 5.4;
   const sarungY = P.pelvisY + P.pelvisH/2 - sarungH/2;
-  const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEX.check})
+  const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEXTURES().check})
                   : cfg.sarung === null ? null : mat(cfg.sarung);
   if (sarungMat) box(g, {w:P.pelvisW+PAD+0.7, h:sarungH, d:P.pelvisD+PAD+0.7, y:sarungY, material:sarungMat});
   else box(g, {w:P.pelvisW+PAD, h:4.2, d:P.pelvisD+PAD, y:P.pelvisY-0.4, material:pants});
@@ -759,53 +880,60 @@ function buildChar(cfg){
     });
   }
 
+  /* Face shape. A long face is not a taller box -- the chin has to stay
+     on the neck, so the extra height is added upward and the centre moves
+     with it. Depth follows width so the head does not read as a slab. */
+  const fw = (cfg.face && cfg.face.w) || 1, fh = (cfg.face && cfg.face.h) || 1;
+  const hW = P.headW * fw, hH = P.headH * fh, hD = P.headD * fw;
+  const hY = P.headY + (hH - P.headH) / 2;
+
   /* head: the portrait rides the +z face group alone */
   const head = new THREE.Group();
-  head.position.y = P.headY;
+  head.position.y = hY;
   g.add(head);
-  const faceMat = new THREE.MeshPhongMaterial({color:0xffffff, map:faceTexture(SKIN),
+  const faceMat = new THREE.MeshPhongMaterial({color:0xffffff, map:faceTexture(skinHex),
                                                specular:0x22271f, shininess:11});
-  box(head, {w:P.headW, h:P.headH, d:P.headD, material:[skin, faceMat]});
+  box(head, {w:hW, h:hH, d:hD, material:[skin, faceMat]});
   [-1,1].forEach(function(s){
-    box(head, {w:0.5, h:2.0, d:1.5, x:s*(P.headW/2+0.22), y:-0.2, z:-0.3, material:skin});
+    box(head, {w:0.5, h:2.0, d:1.5, x:s*(hW/2+0.22), y:-0.2, z:-0.3, material:skin});
   });
-  const hz = P.headD/2, hx = P.headW/2, cell = (P.headW+0.4)/4;
-  box(head, {w:P.headW+0.24, h:P.headH*0.74, d:1.1, y:0.5, z:-(hz+0.3), material:hair});
+  const hz = hD/2, hx = hW/2, cell = (hW+0.4)/4;
+  box(head, {w:hW+0.24, h:hH*0.74, d:1.1, y:0.5, z:-(hz+0.3), material:hair});
   if (cfg.headwear === 'none'){
-    box(head, {w:P.headW+0.26, h:0.7, d:P.headD+0.24, y:P.headH/2+0.2, material:hair});
+    box(head, {w:hW+0.26, h:0.7, d:hD+0.24, y:hH/2+0.2, material:hair});
     [[1,2,2,1],[1,2,2,2],[1,1,2,1],[1,1,1,1]].forEach(function(row, r){
       row.forEach(function(v, q){
         const h = 0.7 + v*0.72;
         box(head, {w:cell+0.1, h:h, d:cell+0.1, x:(q-1.5)*cell,
-                   y:P.headH/2-0.3+h/2, z:(1.5-r)*cell-0.3, material:hair});
+                   y:hH/2-0.3+h/2, z:(1.5-r)*cell-0.3, material:hair});
       });
     });
     [-1.5,-0.5,0.5,1.5].forEach(function(q, i){
       const drop = (i===0||i===3) ? 2.4 : 1.1;
-      box(head, {w:cell+0.1, h:drop, d:1.1, x:q*cell, y:P.headH/2-drop/2+0.1, z:hz+0.1, material:hair});
+      box(head, {w:cell+0.1, h:drop, d:1.1, x:q*cell, y:hH/2-drop/2+0.1, z:hz+0.1, material:hair});
     });
     [-1,1].forEach(function(s){
-      box(head, {w:0.55, h:2.8, d:P.headD+0.2, x:s*(hx+0.38), y:P.headH/2-2.0, material:hair});
+      box(head, {w:0.55, h:2.8, d:hD+0.2, x:s*(hx+0.38), y:hH/2-2.0, material:hair});
     });
   } else {
-    box(head, {w:P.headW+0.24, h:0.9, d:P.headD+0.24, y:P.headH/2-0.3, material:hair});
+    box(head, {w:hW+0.24, h:0.9, d:hD+0.24, y:hH/2-0.3, material:hair});
   }
   if (cfg.headwear === 'songkok'){
     const felt = mat(0x13150f);
-    box(g, {w:P.headW+0.5, h:2.6, d:P.headD+0.5, y:P.headY+P.headH/2+1.1, material:felt});
-    box(g, {w:P.headW+0.15, h:0.45, d:P.headD+0.15, y:P.headY+P.headH/2+2.6, material:felt});
+    box(g, {w:hW+0.5, h:2.6, d:hD+0.5, y:hY+hH/2+1.1, material:felt});
+    box(g, {w:hW+0.15, h:0.45, d:hD+0.15, y:hY+hH/2+2.6, material:felt});
   }
   if (cfg.headwear === 'tanijak'){
     const cloth = mat(lvl===2?0x0a1310:0x0d1311);
     const trace = mat(lvl===2?0x0b2c15:0x0a1a0f,
         {emissive:NEON_BODY, ei:lvl===2?0.95:0.30, map:null, shine:'hard'});
     pulse.push({m:trace, base:lvl===2?0.95:0.30, amt:EMIT[lvl].amt});
-    const base = P.headY + P.headH/2;
-    box(g, {w:P.headW+0.8, h:1.9, d:P.headD+0.8, y:base+0.85, material:cloth});
-    box(g, {w:P.headW+0.9, h:0.26, d:P.headD+0.9, y:base+1.70, material:trace});
-    box(g, {w:P.headW+0.5, h:2.0, d:P.headD+0.5, y:base+2.70, material:cloth});
-    box(g, {w:5.0, h:1.8, d:0.7, y:base+2.6, z:P.headD/2+0.42, material:cloth});
-    box(g, {w:1.5, h:1.5, d:0.3, y:base+2.6, z:P.headD/2+0.80, rz:0.79, material:trace});
+    const base = hY + hH/2;
+    box(g, {w:hW+0.8, h:1.9, d:hD+0.8, y:base+0.85, material:cloth});
+    box(g, {w:hW+0.9, h:0.26, d:hD+0.9, y:base+1.70, material:trace});
+    box(g, {w:hW+0.5, h:2.0, d:hD+0.5, y:base+2.70, material:cloth});
+    box(g, {w:5.0, h:1.8, d:0.7, y:base+2.6, z:hD/2+0.42, material:cloth});
+    box(g, {w:1.5, h:1.5, d:0.3, y:base+2.6, z:hD/2+0.80, rz:0.79, material:trace});
     const capTop = base + 3.70;
     [[4.4, lvl===2?4.2:3.5, 3.8, -0.8, 0.66], [3.3, lvl===2?2.7:2.3, 3.2, 2.0, -0.78]]
       .forEach(function(f){
@@ -953,7 +1081,7 @@ function iconGroup(name){
    list icons are real 3D renders held still, and only the badges beside the
    avatar are live. */
 const BAKED = ['masjid','panah','renang','kuda','kitab','bola',
-               'bulan','tasbih','bantu','lari','tembak'];
+               'bulan','tasbih','bantu','lari','tembak','silat','wajik','hex'];
 
 function bakeIcons(){
   const c = document.createElement('canvas');
@@ -985,13 +1113,25 @@ function bakeIcons(){
 /* =====================================================================
    One renderer, one scene, scissor viewports pinned to DOM slots
    ===================================================================== */
+/* Everything below is OPTIONAL. The avatar is the point of this app, but
+   the amal list, the shop and the muhasabah log are not, and a failed
+   script takes all of them down together. So the renderer lives inside a
+   boot that is allowed to fail. */
+let setRank = function(){};
+let startLoop = function(){};
+let HAS3D = false;
+/* the badge renderer reaches into the scene from the app-state section,
+   so these two are the module's; boot3D only fills them in */
+let scene = null, renderer = null;
+
+function boot3D(){
 const canvas = document.getElementById('gl');
-const renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, alpha:true});
+renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, alpha:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(0x000000, 0);
 renderer.autoClear = false;
 
-const scene = new THREE.Scene();
+scene = new THREE.Scene();
 scene.add(new THREE.AmbientLight(0x2e3630, 0.68));
 scene.add(new THREE.HemisphereLight(0x477055, 0x05130b, 0.38));
 const key = new THREE.DirectionalLight(0xfff4e4, 0.92); key.position.set(-38,52,66); scene.add(key);
@@ -1000,11 +1140,11 @@ const rim2 = new THREE.DirectionalLight(0xffd7a8, 0.26); rim2.position.set(-52,2
 const lamp = new THREE.PointLight(0xb6ffcf, 0.8, 78, 2); lamp.position.set(0,46,12); scene.add(lamp);
 
 let avatar = null;
-function setRank(i){
+setRank = function(i){
   if (avatar) scene.remove(avatar);
-  avatar = buildChar(RANKS[i]);
+  avatar = buildChar(cfgFor(i));
   scene.add(avatar);
-}
+};
 
 /* a camera per slot: the home one crops to the chest, the avatar screen
    frames the whole figure */
@@ -1119,6 +1259,10 @@ function frame(){
   renderer.setScissorTest(false);
 }
 
+startLoop = frame;
+HAS3D = true;
+}
+
 /* =====================================================================
    app state
    ===================================================================== */
@@ -1153,8 +1297,136 @@ const VENUES = [
 const SOLAT = ['SOLAT SUBUH', 'SOLAT ZOHOR', 'SOLAT ASAR'];
 const MOODS = [['tenang','TENANG'], ['gesa','TERGESA'], ['lena','MENGANTUK']];
 
-const state = {rank:1, xp:680, amanah:82, screen:'s-utama'};   // rank index, so RANK 2
+/* =====================================================================
+   The economy.
+
+   XP was one number doing two jobs: it drove the rank AND it is now the
+   currency. Those cannot be the same number -- buying a saddle would
+   demote you, and a player who spends is punished for spending. So it
+   splits into two readings of the same earning:
+
+     xpLife  -- every XP ever earned. Drives the rank. Never decreases.
+     wallet  -- what is left after spending. Drives the shop.
+
+   Nothing about earning changes: one amal pays into both. The player
+   still "spends XP", which is how the idea was put; they just cannot
+   spend their rank away.
+   ===================================================================== */
+const state = {rank:1, xpLife:680, wallet:680, amanah:82, screen:'s-utama'};
 const NEXT_XP = 1000;
+
+/* =====================================================================
+   Unlocks.
+
+   An item is not gated on XP. XP only says whether you can afford it --
+   the *right* to own a thing comes from having done the activity, and
+   that is deliberately unbuyable. No amount of amal unlocks a saddle;
+   only riding does.
+
+   Three gates:
+     asas   -- no gate. Buyable with XP alone. Kept to ordinary things.
+     kira   -- N sessions of an activity logged.
+     lulus  -- a named level passed. An assessment, not a counter.
+   ===================================================================== */
+const AKTIVITI = {
+  renang: {nm:'Berenang',  ic:'renang', kira:5,  lulus:null},
+  kuda:   {nm:'Berkuda',   ic:'kuda',   kira:3,  lulus:'asas'},
+  panah:  {nm:'Memanah',   ic:'panah',  kira:2,  lulus:null},
+  tembak: {nm:'Menembak',  ic:'tembak', kira:0,  lulus:null},
+  silat:  {nm:'Silat',     ic:'silat',  kira:6,  lulus:null},
+  lari:   {nm:'Larian',    ic:'lari',   kira:11, lulus:null}
+};
+const LULUS = {asas:'Latihan asas', mahir:'Mahir', tauliah:'Bertauliah'};
+
+const KEDAI = [
+  /* --- asas: no gate, and nothing rare lives here --- */
+  {id:'kopiah',  nm:'Kopiah Putih',        kat:'asas', ic:'bulan',  xp:120, g:null},
+  {id:'sejadah', nm:'Sejadah Lipat',       kat:'asas', ic:'masjid', xp:180, g:null},
+  {id:'tasbih',  nm:'Tasbih Kayu',         kat:'asas', ic:'tasbih', xp:150, g:null},
+  {id:'botol',   nm:'Botol Air Nusuki',    kat:'asas', ic:'bola',   xp:90,  g:null},
+  {id:'quran',   nm:'Al-Quran Saku',       kat:'asas', ic:'kitab',  xp:240, g:null},
+
+  /* --- renang --- */
+  {id:'goggle',  nm:'Goggle Renang',       kat:'renang', ic:'renang', xp:260,
+   g:{t:'kira', act:'renang', need:3}},
+  {id:'fin',     nm:'Fin Latihan',         kat:'renang', ic:'renang', xp:420,
+   g:{t:'kira', act:'renang', need:8}},
+
+  /* --- kuda: the module's own example -- basic training first --- */
+  {id:'topikuda',nm:'Topi Keledar Berkuda',kat:'kuda', ic:'kuda', xp:340,
+   g:{t:'lulus', act:'kuda', lvl:'asas'}},
+  {id:'pelana',  nm:'Pelana & Tali',       kat:'kuda', ic:'kuda', xp:880,
+   g:{t:'lulus', act:'kuda', lvl:'mahir'}},
+  {id:'kuda1',   nm:'Kuda Sendiri',        kat:'kuda', ic:'kuda', xp:4200,
+   g:{t:'lulus', act:'kuda', lvl:'tauliah'}, rare:true},
+
+  /* --- silat --- */
+  {id:'samping', nm:'Samping Silat',       kat:'silat', ic:'wajik', xp:300,
+   g:{t:'kira', act:'silat', need:8}},
+  {id:'kerissilat',nm:'Keris Latihan',     kat:'silat', ic:'silat', xp:1100,
+   g:{t:'lulus', act:'silat', lvl:'asas'}, rare:true},
+
+  /* --- panah / tembak --- */
+  {id:'sarung',  nm:'Sarung Anak Panah',   kat:'panah', ic:'panah', xp:280,
+   g:{t:'kira', act:'panah', need:4}},
+  {id:'busur',   nm:'Busur Sendiri',       kat:'panah', ic:'panah', xp:1600,
+   g:{t:'lulus', act:'panah', lvl:'mahir'}, rare:true},
+  {id:'telinga', nm:'Pelindung Telinga',   kat:'tembak', ic:'tembak', xp:220,
+   g:{t:'kira', act:'tembak', need:2}},
+
+  /* --- lari --- */
+  {id:'kasut',   nm:'Kasut Larian',        kat:'lari', ic:'lari', xp:520,
+   g:{t:'kira', act:'lari', need:10}}
+];
+const OWNED = {botol:true, kopiah:true};
+
+/* Is the gate open? Returns null when open, or the reason it is not. */
+function gateOf(item){
+  const g = item.g;
+  if (!g) return null;
+  const a = AKTIVITI[g.act];
+  if (g.t === 'kira'){
+    if (a.kira >= g.need) return null;
+    return {sudah:a.kira, perlu:g.need,
+            txt:a.nm + ' ' + a.kira + '/' + g.need + ' sesi'};
+  }
+  const order = ['asas','mahir','tauliah'];
+  const have = a.lulus ? order.indexOf(a.lulus) : -1;
+  if (have >= order.indexOf(g.lvl)) return null;
+  return {txt:'Lulus ' + LULUS[g.lvl] + ' ' + a.nm,
+          sudah:have + 1, perlu:order.indexOf(g.lvl) + 1};
+}
+
+/* Avatar setup. Deliberately small: a face shape and four colours. The
+   garment silhouette stays the rank's, because the rank is the thing the
+   avatar is meant to report. */
+const MUKA = [
+  {k:'bulat',   nm:'BULAT',     w:1.06, h:0.94},
+  {k:'sederhana',nm:'SEDERHANA', w:1.00, h:1.00},
+  {k:'panjang', nm:'PANJANG',   w:0.93, h:1.12}
+];
+const KULIT = [0xf7c89b, 0xf0aa6d, 0xd08e52, 0xa9683c, 0x7d4a28];
+const RAMBUT = [0x222221, 0x3b2a1c, 0x11100f, 0x55402c];
+const WARNA_BAJU = [0xa85c22, 0x1a8798, 0x2f6b3a, 0x6b3550, 0x27406e, 0x1d2022];
+const WARNA_KAIN = [0xe5dcc9, 0x2b3a52, 0x6f4523, 0x3a4a3f, 0x5a2f33, 0x111416];
+
+const rupa = {muka:'sederhana', kulit:1, rambut:0, baju:1, kain:0};
+
+function cfgFor(rankIdx){
+  const base = RANKS[rankIdx];
+  const m = MUKA.find(function(x){ return x.k === rupa.muka; }) || MUKA[1];
+  /* shallow copy: the rank object must not be mutated, or switching rank
+     would carry the last player's colours into the next build */
+  const c = {};
+  Object.keys(base).forEach(function(k){ c[k] = base[k]; });
+  c.face = {w:m.w, h:m.h};
+  c.skin = KULIT[rupa.kulit];
+  c.hair = RAMBUT[rupa.rambut];
+  c.shirt = WARNA_BAJU[rupa.baju];
+  if (base.sarung !== null && base.sarung !== 'check') c.sarung = WARNA_KAIN[rupa.kain];
+  c.pants = WARNA_KAIN[rupa.kain];
+  return c;
+}
 
 function el(id){ return document.getElementById(id); }
 
@@ -1184,6 +1456,8 @@ const FLOAT_POS = [
 const floatBadges = [];
 
 function renderFloatBadges(){
+  if (!scene) return;            /* no 3D, no floating badges -- the grid
+                                    below the avatar is the real list */
   const host = el('slot-avatar');
   host.querySelectorAll('.fb').forEach(function(n){ n.remove(); });
   floatBadges.forEach(function(b){ scene.remove(b.obj); });
@@ -1212,12 +1486,18 @@ function renderMeters(){
   const c = RANKS[state.rank];
   el('u-rank').textContent = 'RANK ' + c.rank + ' // ' + c.name.toUpperCase();
   el('a-cap').textContent = 'AHMAD FARIS — ' + c.name.toUpperCase();
-  const pct = Math.min(100, Math.round(state.xp / NEXT_XP * 100));
+  /* the bar is progress inside the current rank, so it reads lifetime XP
+     -- spending can never pull it backwards */
+  const inRank = state.xpLife % NEXT_XP;
+  const pct = Math.min(100, Math.round(inRank / NEXT_XP * 100));
   el('xp-bar').style.width = pct + '%';
   el('xp-pct').textContent = pct + '%';
-  el('xp-label').textContent = state.xp + ' / ' + NEXT_XP + ' XP → RANK ' +
+  el('xp-label').textContent = inRank + ' / ' + NEXT_XP + ' XP → RANK ' +
     Math.min(5, c.rank + 1);
-  el('a-xp').textContent = state.xp;
+  el('a-xp').textContent = state.xpLife;
+  document.querySelectorAll('.wallet-v').forEach(function(n){
+    n.textContent = state.wallet.toLocaleString('ms-MY');
+  });
   el('u-amanah').textContent = state.amanah + '/100';
   el('a-kons').innerHTML = state.amanah + '<u>%</u>';
   const track = el('u-track');
@@ -1261,18 +1541,138 @@ function toggleAmal(i, btn){
   a.done = !a.done;
   btn.setAttribute('aria-pressed', String(a.done));
   btn.querySelector('.chk').innerHTML = a.done ? vi('tik', 0, true) : '';
-  state.xp = Math.max(0, state.xp + (a.done ? a.xp : -a.xp));
+  /* one amal, two ledgers: the rank's and the purse's */
+  const d = a.done ? a.xp : -a.xp;
+  state.xpLife = Math.max(0, state.xpLife + d);
+  state.wallet = Math.max(0, state.wallet + d);
   state.amanah = Math.max(0, Math.min(100, state.amanah + (a.done ? 2 : -2)));
   toast((a.done ? '+' : '−') + a.xp + ' XP');
 
-  /* the avatar reflects the deeds: fill the track and the rank advances */
-  while (state.xp >= NEXT_XP && state.rank < RANKS.length - 1){
-    state.xp -= NEXT_XP;
+  /* the avatar reflects the deeds: the rank advances on lifetime XP */
+  while (state.rank < RANKS.length - 1
+         && Math.floor(state.xpLife / NEXT_XP) > state.rank){
     state.rank++;
     setRank(state.rank);
     toast('NAIK PANGKAT → ' + RANKS[state.rank].name.toUpperCase());
   }
   renderMeters();
+  if (state.screen === 's-kedai') renderKedai();
+}
+
+/* =====================================================================
+   Ubah rupa
+   ===================================================================== */
+function swatches(list, key, cur){
+  return list.map(function(hex, i){
+    return '<button type="button" class="sw" data-k="' + key + '" data-i="' + i
+      + '" aria-pressed="' + (i === cur) + '" aria-label="Warna ' + (i + 1)
+      + '" style="background:#' + hex.toString(16).padStart(6, '0')
+      + '"></button>';
+  }).join('');
+}
+
+function renderRupa(){
+  el('rupa').innerHTML =
+    '<div class="rgrp"><div class="rlab">BENTUK MUKA</div><div class="rrow">'
+    + MUKA.map(function(m){
+        /* the chip carries a box in the proportion it sets, so the choice
+           is visible before you make it */
+        return '<button type="button" class="shape" data-k="muka" data-v="'
+          + m.k + '" aria-pressed="' + (m.k === rupa.muka) + '">'
+          + '<i style="width:' + (14 * m.w / m.h).toFixed(1) + 'px; height:'
+          + (14 * m.h / m.w).toFixed(1) + 'px"></i>'
+          + m.nm + '</button>';
+      }).join('')
+    + '</div></div>'
+    + '<div class="rgrp"><div class="rlab">WARNA KULIT</div><div class="rrow">'
+    + swatches(KULIT, 'kulit', rupa.kulit) + '</div></div>'
+    + '<div class="rgrp"><div class="rlab">WARNA RAMBUT</div><div class="rrow">'
+    + swatches(RAMBUT, 'rambut', rupa.rambut) + '</div></div>'
+    + '<div class="rgrp"><div class="rlab">WARNA BAJU</div><div class="rrow">'
+    + swatches(WARNA_BAJU, 'baju', rupa.baju) + '</div></div>'
+    + '<div class="rgrp"><div class="rlab">WARNA KAIN / SELUAR</div><div class="rrow">'
+    + swatches(WARNA_KAIN, 'kain', rupa.kain) + '</div></div>';
+
+  el('rupa').querySelectorAll('.sw, .shape').forEach(function(b){
+    b.addEventListener('click', function(){
+      rupa[b.dataset.k] = b.dataset.v !== undefined ? b.dataset.v : +b.dataset.i;
+      setRank(state.rank);
+      renderRupa();
+    });
+  });
+}
+
+/* =====================================================================
+   Kedai
+   ===================================================================== */
+function renderAkt(){
+  const order = ['asas','mahir','tauliah'];
+  el('akt').innerHTML = Object.keys(AKTIVITI).map(function(k){
+    const a = AKTIVITI[k];
+    /* the bar is sessions logged, capped at the highest gate that uses
+       this activity -- a bar with no ceiling says nothing */
+    const gates = KEDAI.filter(function(it){ return it.g && it.g.act === k
+      && it.g.t === 'kira'; }).map(function(it){ return it.g.need; });
+    const top = gates.length ? Math.max.apply(null, gates) : a.kira || 1;
+    const pct = Math.min(100, Math.round(a.kira / top * 100));
+    return '<div class="aktr"><span class="ic">' + vi(a.ic, 22) + '</span>'
+      + '<div><div class="an">' + a.nm + '</div>'
+      + '<div class="ab"><i style="width:' + pct + '%"></i></div></div>'
+      + '<div class="av' + (a.lulus ? ' pass' : '') + '">' + a.kira + ' SESI'
+      + (a.lulus ? '<br>' + LULUS[a.lulus].toUpperCase() : '') + '</div></div>';
+  }).join('');
+}
+
+let KAT = 'SEMUA';
+function renderKedai(){
+  renderAkt();
+  const kats = ['SEMUA','ASAS'].concat(Object.keys(AKTIVITI)
+    .filter(function(k){ return KEDAI.some(function(i){ return i.kat === k; }); })
+    .map(function(k){ return k.toUpperCase(); }));
+  el('kedai-chips').innerHTML = kats.map(function(c){
+    return '<button type="button" class="chip" aria-pressed="'
+      + (c === KAT) + '" data-c="' + c + '">' + c + '</button>';
+  }).join('');
+  el('kedai-chips').querySelectorAll('.chip').forEach(function(b){
+    b.addEventListener('click', function(){ KAT = b.dataset.c; renderKedai(); });
+  });
+
+  const items = KEDAI.filter(function(i){
+    return KAT === 'SEMUA' || i.kat.toUpperCase() === KAT;
+  });
+  el('kedai-list').innerHTML = items.map(function(i){
+    const gate = gateOf(i), own = OWNED[i.id];
+    const afford = state.wallet >= i.xp;
+    let right;
+    if (own) right = '<span class="own">DIMILIKI</span>';
+    else if (gate) right = '<div class="gate">' + gate.txt.toUpperCase() + '</div>';
+    else right = '<button type="button" class="buy" data-id="' + i.id + '"'
+      + (afford ? '' : ' disabled') + '>' + i.xp + ' XP</button>';
+    return '<div class="card item' + (gate && !own ? ' lock' : '') + '">'
+      + '<span class="ii">' + vi(i.ic, 34) + '</span>'
+      + '<div><div class="it">' + i.nm
+      + (i.rare ? '<span class="rare">RARE</span>' : '') + '</div>'
+      + '<div class="is">' + i.xp + ' XP'
+      + (gate && !own ? ' // TERKUNCI' : '')
+      + (!gate && !own && !afford ? ' // BAKI TAK CUKUP' : '') + '</div></div>'
+      + right + '</div>';
+  }).join('');
+
+  el('kedai-list').querySelectorAll('.buy').forEach(function(b){
+    b.addEventListener('click', function(){ beli(b.dataset.id); });
+  });
+}
+
+function beli(id){
+  const i = KEDAI.find(function(x){ return x.id === id; });
+  /* re-check both conditions at the moment of purchase: the button could
+     have been rendered before an amal was un-ticked */
+  if (OWNED[id] || gateOf(i) || state.wallet < i.xp) { renderKedai(); return; }
+  state.wallet -= i.xp;
+  OWNED[id] = true;
+  renderMeters();
+  renderKedai();
+  toast(i.nm.toUpperCase() + ' DIBELI — ' + i.xp + ' XP');
 }
 
 function renderRek(){
@@ -1332,6 +1732,7 @@ function renderMuh(){
 const TABS = [
   {id:'s-utama',  gl:'rumah', nm:'UTAMA'},
   {id:'s-avatar', gl:'orang', nm:'AVATAR'},
+  {id:'s-kedai',  gl:'hex',   nm:'KEDAI'},
   {id:'s-rek',    gl:'wajik', nm:'REKREASI'},
   {id:'s-muh',    gl:'hati',  nm:'MUHASABAH'}
 ];
@@ -1357,12 +1758,24 @@ function go(id){
   el('body').scrollTop = 0;
 }
 
-bakeIcons();
-setRank(state.rank);
-renderBadges(); renderMeters(); renderAmal(); renderRek(); renderMuh(); renderTabs();
-frame();
+/* The 3D is a bonus on top of an app that has to work without it. */
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js tidak dimuat');
+  bakeIcons();
+  boot3D();
+  setRank(state.rank);
+} catch (e){
+  console.warn('Avatar voxel dilangkau:', e.message);
+  document.querySelectorAll('.slot').forEach(function(n){
+    n.classList.add('noglass');
+  });
+}
 
-window.NUSUKI_APP = {state:state, scene:scene, renderer:renderer, go:go, setRank:setRank};
+renderBadges(); renderMeters(); renderAmal(); renderRek(); renderMuh(); renderTabs();
+renderRupa(); renderKedai();
+startLoop();
+
+window.NUSUKI_APP = {state:state, go:go, setRank:setRank, has3D:function(){ return HAS3D; }};
 window.ICON_IMG = ICON_IMG;
 </script>
 </body>
