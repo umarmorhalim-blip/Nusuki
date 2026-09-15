@@ -367,6 +367,31 @@ Two things this needed:
 The view bar itself sits outside the scaled board, so it stays a real tap target
 however far the board shrinks.
 
+### The 3D is optional, and had to be made so
+
+The first published version came up on a phone as a page of **empty cards** —
+headings and subtitles, nothing under them. The cause was one line in the
+console: `THREE is not defined`. three.js was loaded from cdnjs, it did not
+arrive inside the mobile artifact webview, and because the renderer was
+constructed at the top level of the script, the *entire* script died on it. No
+triage rows, no trend line, no heatmap — every dynamic panel was empty, and the
+one thing that failed was the only decorative element on the page.
+
+Two fixes, and the second matters more than the first:
+
+1. **three.js ships next to the page** (`vendor/three.min.js`), with the CDN kept
+   only as a fallback for anyone who copies the HTML out on its own. No network
+   fetch, no failure mode.
+2. **Nothing the dashboard is for depends on WebGL.** The renderer, the scene and
+   the bakes now live inside `boot3D()`, called in a `try`, and the texture cache
+   is built on first use instead of at parse time. If three.js is missing or WebGL
+   is unavailable, that logs a warning and every chart still renders. The figures
+   fall back to the flat voxel glyph the tab bar already uses, tinted by rank —
+   still a voxel, still tells you the rank, just not modelled.
+
+A dependency for one decorative element must never be able to blank the thing a
+mentor came to read. That is worth more than the avatar.
+
 ### Reuse and cost
 
 The voxel engine is lifted verbatim from `app.html`, because the figure the

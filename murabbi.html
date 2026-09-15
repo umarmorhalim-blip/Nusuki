@@ -1,8 +1,4 @@
-<!DOCTYPE html>
-<html lang="ms">
-<head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nusuki — Dashboard Murabbi</title>
 <style>
 /* =====================================================================
@@ -135,6 +131,9 @@ header{display:flex; align-items:center; gap:16px; flex-wrap:wrap;
 .trow .nm{font-size:13.5px; font-weight:600; display:flex; gap:8px;
   align-items:center}
 .trow .why{font-size:12px; color:var(--ink2); margin-top:2px}
+.bust.flat{display:grid; place-items:center; background:#0a150e}
+.slot-flat{position:absolute; inset:0; display:grid; place-items:center;
+  opacity:.9}
 .chip{font-size:9.5px; letter-spacing:.14em; padding:3px 7px;
   border-radius:999px; border:1px solid currentColor; font-weight:600;
   display:inline-flex; align-items:center; gap:5px; white-space:nowrap}
@@ -318,8 +317,7 @@ body.fit #gl{display:none}
   .brow{grid-template-columns:62px 1fr}
 }
 </style>
-</head>
-<body>
+
 <canvas id="gl"></canvas>
 <div id="tip" role="tooltip"></div>
 <div id="toast" role="status"></div>
@@ -485,7 +483,15 @@ body.fit #gl{display:none}
 </div>
 </div></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- Served alongside the page rather than fetched from a CDN. The first
+     build loaded three.js from cdnjs, it did not arrive inside the mobile
+     artifact webview, and the whole dashboard came up as empty cards. -->
+<script src="vendor/three.min.js"></script>
+<script>
+if (typeof THREE === 'undefined')
+  document.write('<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/'
+    + 'libs/three.js/r128/three.min.js"></scr' + 'ipt>');
+</script>
 <script>
 /* =====================================================================
    Voxel icon set. Emoji broke the concept -- they are round, glossy and
@@ -671,7 +677,13 @@ function faceTexture(skinHex){
   g.quadraticCurveTo(8*cell, 12.0*cell, 10.1*cell, 10.4*cell); g.stroke();
   const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
 }
-const TEX = {vox:voxelTile(), check:checkTile()};
+/* built on first use, not at parse time -- nothing about the charts needs
+   a WebGL texture, and this file must survive three.js not arriving */
+let _tex = null;
+function TEXTURES(){
+  if (!_tex) _tex = {vox:voxelTile(), check:checkTile()};
+  return _tex;
+}
 
 /* A box with its 12 edges and 8 corners cut, cached per size: a scaled
    unit cube cannot carry a bevel without stretching it into a wedge. */
@@ -744,7 +756,7 @@ function mat(color, o){
   const hard = o.shine === 'hard';
   return new THREE.MeshPhongMaterial({
     color: color,
-    map: o.map === null ? null : (o.map || TEX.vox),
+    map: o.map === null ? null : (o.map || TEXTURES().vox),
     specular: hard ? 0x5d6b5f : 0x22271f,
     shininess: hard ? 34 : 11,
     emissive: o.emissive !== undefined ? o.emissive : 0x000000,
@@ -825,7 +837,7 @@ function buildChar(cfg){
   box(g, {w:P.torsoW, h:P.torsoH, d:P.torsoD, y:P.torsoY, material:skin});
   const sarungH = cfg.sarungLong ? 9.4 : 5.4;
   const sarungY = P.pelvisY + P.pelvisH/2 - sarungH/2;
-  const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEX.check})
+  const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEXTURES().check})
                   : cfg.sarung === null ? null : mat(cfg.sarung);
   if (sarungMat) box(g, {w:P.pelvisW+PAD+0.7, h:sarungH, d:P.pelvisD+PAD+0.7, y:sarungY, material:sarungMat});
   else box(g, {w:P.pelvisW+PAD, h:4.2, d:P.pelvisD+PAD, y:P.pelvisY-0.4, material:pants});
@@ -1293,7 +1305,20 @@ function bakeBusts(){
 /* =====================================================================
    The one live scene: the selected mutarabbi's avatar, scissored to its
    slot in the panel.
+
+   All of it is OPTIONAL. The dashboard is charts, and not one of them
+   needs WebGL -- but the first build put the renderer at the top level,
+   so when three.js failed to arrive the whole script died on `THREE is
+   not defined` and every dynamic panel came up empty: no triage rows, no
+   trend, no heatmap. A dependency for the one decorative element must
+   never be able to blank the thing a mentor came to read.
    ===================================================================== */
+const slotEl = document.getElementById('slot-mentee');
+let setAvatar = function(){};       /* replaced by boot3D when it runs */
+let startLoop = function(){};
+let HAS3D = false;
+
+function boot3D(){
 const canvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, alpha:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -1309,16 +1334,15 @@ const rimB = new THREE.DirectionalLight(0xffd7a8, 0.26); rimB.position.set(-52,2
 const lamp = new THREE.PointLight(0xb6ffcf, 0.75, 78, 2); lamp.position.set(0,46,12); scene.add(lamp);
 
 const cam = new THREE.PerspectiveCamera(32, 1, 0.5, 400);
-const slotEl = document.getElementById('slot-mentee');
 let avatar = null, avScale = 1;
 
-function setAvatar(r){
+setAvatar = function(r){
   if (avatar) scene.remove(avatar);
   const cfg = RANKS[r - 1];
   avatar = buildChar(cfg);
   avScale = cfg.scale;
   scene.add(avatar);
-}
+};
 
 function resize(){
   /* setSize must be allowed to write style.width/height: a canvas is a
@@ -1374,6 +1398,10 @@ function frame(){
     renderer.render(scene, cam);
   }
   renderer.setScissorTest(false);
+}
+
+startLoop = frame;
+HAS3D = true;
 }
 
 /* =====================================================================
@@ -1620,13 +1648,23 @@ function renderTiles(){
   }).join('');
 }
 
+/* Without WebGL there are no baked figures, so the cell falls back to the
+   flat voxel glyph the tab bar already uses, tinted by rank. It is still a
+   voxel and still tells you which rank -- it just isn't modelled. */
+function bustCell(p){
+  if (BUST[p.r - 1])
+    return '<img class="bust" src="' + BUST[p.r - 1] + '" alt="">';
+  return '<span class="bust flat" style="color:' + RAMP[p.r - 1] + '">'
+    + viFlat('orang', 26) + '</span>';
+}
+
 function renderTriage(){
   el('tri-n').textContent = TRIAGE.length + ' DARIPADA ' + PEOPLE.length;
   el('triage').innerHTML = TRIAGE.map(function(p){
     const r = p.top;
     return '<button class="trow" data-nm="' + p.nm + '"'
       + (p === current ? ' aria-current="true"' : '') + '>'
-      + '<img class="bust" src="' + (BUST[p.r - 1] || '') + '" alt="">'
+      + bustCell(p)
       + '<div><div class="nm">' + p.nm + ' <span class="chip ' + r.cls + '">'
       + chipIco(r.kind) + r.tag + '</span></div>'
       + '<div class="why">' + r.why + '</div></div>'
@@ -1808,20 +1846,37 @@ function applyFit(){
     fr.style.transform = 'scale(' + k + ')';
     /* scrollHeight is the untransformed layout height, which is exactly
        what we need to multiply */
-    box.style.height = Math.ceil(fr.scrollHeight * k) + 'px';
+    const h = Math.ceil(fr.scrollHeight * k);
+    box.style.height = h + 'px';
+    /* scaled down, the board is often shorter than the screen -- centre it
+       rather than leaving half a screen of empty ground beneath it */
+    box.style.marginTop = Math.max(0, (innerHeight - h) / 2 - 24) + 'px';
   } else {
     document.body.classList.remove('fit');
     fr.style.transform = '';
     box.style.height = '';
+    box.style.marginTop = '';
   }
   el('vb-fit').setAttribute('aria-pressed', FIT);
   el('vb-stack').setAttribute('aria-pressed', !FIT);
   slotFigure();
 }
 
-/* in fit mode the slot shows the baked figure; otherwise the live one */
+/* In fit mode the slot shows the baked figure; otherwise the live one.
+   With no WebGL at all there is neither, so it shows the flat glyph and
+   says so rather than leaving a hole where a person should be. */
 function slotFigure(){
   const img = slotEl.querySelector('img');
+  const ph = slotEl.querySelector('.slot-flat');
+  if (!HAS3D){
+    if (img) img.remove();
+    if (!ph) slotEl.insertAdjacentHTML('beforeend',
+      '<div class="slot-flat" style="color:' + RAMP[current.r - 1] + '">'
+      + viFlat('orang', 62) + '</div>');
+    else ph.style.color = RAMP[current.r - 1];
+    return;
+  }
+  if (ph) ph.remove();
   if (FIT){
     const src = BODY[current.r - 1];
     if (!src) return;
@@ -1888,8 +1943,18 @@ el('chip-ico').style.color = tok('--ink2');
 el('today').textContent = new Date().toLocaleDateString('ms-MY',
   {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
-bakeIcons();
-bakeBusts();
+/* The 3D is a bonus on top of a dashboard that has to work without it:
+   if three.js is missing or WebGL is unavailable, this logs and moves on,
+   and every chart below still renders. */
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js tidak dimuat');
+  bakeIcons();
+  bakeBusts();
+  boot3D();
+} catch (e){
+  console.warn('Avatar voxel dilangkau:', e.message);
+}
+
 renderTiles();
 renderTriage();
 renderDist();
@@ -1897,11 +1962,9 @@ renderTopic();
 renderPulse();
 select(current);
 applyFit();
-frame();
+startLoop();
 
 addEventListener('resize', function(){
   renderPulse(); renderMentee(); applyFit();
 });
 </script>
-</body>
-</html>
