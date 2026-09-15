@@ -120,7 +120,7 @@ h2.k{ margin:0 0 9px; font-weight:400 }
 }
 .fb-l{ left:9px }
 .fb-r{ right:9px }
-.fb .vi{ width:19px; height:19px }
+.fb .vi{ width:23px; height:23px }
 .fb span{
   font-size:7.5px; letter-spacing:.1em; color:#9fd9b3;
   text-align:center; line-height:1.15;
@@ -277,11 +277,11 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
 #gl{ position:fixed; inset:0; width:100%; height:100%; z-index:5; pointer-events:none }
 
 /* voxel icons */
-.vi{ display:block; width:16px; height:16px }
-.bdg .ic{ display:grid; place-items:center; height:18px }
-.bdg .vi{ width:17px; height:17px }
+.vi{ display:block; width:18px; height:18px }
+.bdg .ic{ display:grid; place-items:center; height:21px }
+.bdg .vi{ width:21px; height:21px }
 .arow .ic{ display:grid; place-items:center }
-.venue .ico .vi{ width:21px; height:21px }
+.venue .ico .vi{ width:25px; height:25px }
 .tab .gl{ display:grid; place-items:center; margin-bottom:4px }
 .tab .vi{ width:15px; height:15px }
 .mood .em{ display:grid; place-items:center; margin-bottom:3px }
@@ -436,10 +436,11 @@ const ICONS = {
                             '.11.....','.11.....','..11....','...111..']},
   tasbih:{p:['#38b3c4'], g:['..1111..','.1....1.','1......1','1......1',
                             '1......1','.1....1.','..1..1..','...11...']},
-  bantu: {p:['#39ff6a'], g:['........','1.....1.','11...11.','.111111.',
-                            '.111111.','11...11.','1.....1.','........']},
-  lari:  {p:['#39ff6a'], g:['....11..','....11..','..1111..','.11.11..',
-                            '1...11..','....11..','...1..1.','..1....1']},
+  bantu: {p:['#39ff6a','#ff6b7a'],
+          g:['.22..22.','.222222.','..2222..','...22...',
+             '........','.111111.','.111111.','..1111..']},
+  lari:  {p:['#39ff6a'], g:['...11...','...11...','.111111.','...11...',
+                            '..1111..','.11..11.','11....11','........']},
   rumah: {p:['C'], g:['...11...','..1111..','.111111.','11111111',
                       '.1....1.','.1.11.1.','.1.11.1.','.111111.']},
   orang: {p:['C'], g:['..1111..','.111111.','.1.11.1.','.111111.',
@@ -456,24 +457,74 @@ const ICONS = {
                                 '........','...11...','........','........']},
   tik:   {p:['C'], g:['........','......11','.....11.','....11..',
                       '1..11...','.1111...','..11....','........']},
+  tembak:{p:['#39ff6a','#f0c02a'],   /* a crosshair: the concentric target
+                                        shape belongs to `panah` */
+          g:['...11...','...11...','...11...','11122111',
+             '11122111','...11...','...11...','...11...']},
   hex:   {p:['#f0c02a'], g:['..1111..','.1....1.','1......1','1......1',
                             '1......1','1......1','.1....1.','..1111..']}
 };
-function vi(name, px){
-  const d = ICONS[name];
-  let r = '';
-  d.g.forEach(function(row, y){
-    for (let x=0; x<row.length; x++){
-      const ch = row[x];
-      if (ch === '.') continue;
-      const col = d.p[+ch - 1];
-      r += '<rect x="'+x+'" y="'+y+'" width="1" height="1" fill="' +
-           (col === 'C' ? 'currentColor' : col) + '"/>';
+/* Multiply a hex colour, clamped -- the same per-face brightness split the
+   3D renderer uses: top face lifted, side face dropped. */
+function shade(hex, k){
+  const n = parseInt(hex.slice(1), 16);
+  const ch = [n >> 16 & 255, n >> 8 & 255, n & 255]
+    .map(function(v){ return Math.min(255, Math.round(v * k)); });
+  return 'rgb(' + ch[0] + ',' + ch[1] + ',' + ch[2] + ')';
+}
+const FACE_K = {f:1, t:1.22, r:0.7};     // hex colours: multiply
+const FACE_O = {f:0.9, t:1, r:0.58};     // currentColor: vary opacity instead
+
+function paint(hex, part){
+  if (hex === 'C') return 'fill="currentColor" opacity="' + FACE_O[part] + '"';
+  return 'fill="' + shade(hex, FACE_K[part]) + '"';
+}
+
+/**
+ * Render an icon grid as voxels: every filled pixel becomes a cube, extruded
+ * up-and-right. A cube only draws its top face where nothing sits above it and
+ * its side face where nothing sits to its right, so depth appears along the
+ * silhouette exactly as it does on a real voxel sprite. Front faces are drawn
+ * last because they are the nearest plane.
+ *
+ * `flat` skips the extrusion, for chrome small enough that it would turn to
+ * mush -- tab marks, mood faces, the tick.
+ */
+function vi(name, px, flat){
+  const d = ICONS[name], g = d.g, N = 8;
+  const D = flat ? 0 : 1.5;              // extrusion depth, in grid units
+  const S = N + D;
+  const at = function(x, y){
+    if (y < 0 || y >= N || x < 0 || x >= N) return null;
+    const c = g[y][x];
+    return c === '.' ? null : d.p[+c - 1];
+  };
+
+  let back = '', front = '';
+  for (let y=0; y<N; y++){
+    for (let x=0; x<N; x++){
+      const c = at(x, y);
+      if (!c) continue;
+      const X = x, Y = y + D;
+      if (D){
+        if (!at(x, y - 1)){               // top face
+          back += '<polygon points="' + X + ',' + Y + ' ' + (X+D) + ',' + (Y-D) +
+                  ' ' + (X+1+D) + ',' + (Y-D) + ' ' + (X+1) + ',' + Y + '" ' +
+                  paint(c, 't') + '/>';
+        }
+        if (!at(x + 1, y)){               // right face
+          back += '<polygon points="' + (X+1) + ',' + Y + ' ' + (X+1+D) + ',' + (Y-D) +
+                  ' ' + (X+1+D) + ',' + (Y+1-D) + ' ' + (X+1) + ',' + (Y+1) + '" ' +
+                  paint(c, 'r') + '/>';
+        }
+      }
+      front += '<rect x="' + X + '" y="' + Y + '" width="1.02" height="1.02" ' +
+               paint(c, 'f') + '/>';
     }
-  });
-  return '<svg class="vi" viewBox="0 0 8 8" shape-rendering="crispEdges" ' +
-         'aria-hidden="true"' + (px ? ' style="width:'+px+'px;height:'+px+'px"' : '') +
-         '>' + r + '</svg>';
+  }
+  return '<svg class="vi" viewBox="0 0 ' + S + ' ' + S + '" aria-hidden="true"' +
+         (px ? ' style="width:' + px + 'px;height:' + px + 'px"' : '') + '>' +
+         back + front + '</svg>';
 }
 
 /* =====================================================================
@@ -978,9 +1029,12 @@ const AMAL = [
   {ic:'bulan', t1:'Solat Sunat Rawatib', t2:'Belum ditanda', xp:15, done:false}
 ];
 const VENUES = [
-  {cat:'BERKUDA', ic:'kuda', nm:'Pusat Berkuda Darul Hikmah',
-   mt:'8.1 KM // 4.6 ★ // AHAD–JUMAAT', old:'RM 80/sesi', neu:'RM 65',
+  {cat:'BERKUDA', ic:'kuda', nm:'Kelab Berkuda Al-Heyzum',
+   mt:'12.4 KM // 4.8 ★ // AHAD–JUMAAT', old:'RM 80/sesi', neu:'RM 65',
    bundle:'TABUNG 5 SESI — JIMAT RM 75'},
+  {cat:'MENEMBAK', ic:'tembak', nm:'Institut Latihan Menembak Jugra Perkasa',
+   mt:'46.2 KM // 4.7 ★ // SABTU & AHAD', old:'RM 120/sesi', neu:'RM 95',
+   bundle:'TABUNG 4 SESI — JIMAT RM 100'},
   {cat:'BERENANG', ic:'renang', nm:'Kolam KRIM Bangi',
    mt:'2.3 KM // 4.9 ★ // SETIAP HARI', old:'RM 8/masuk', neu:'RM 5',
    bundle:'TABUNG 20 SESI — JIMAT RM 60'},
@@ -1065,7 +1119,7 @@ function renderAmal(){
     b.type = 'button';
     b.className = 'arow';
     b.setAttribute('aria-pressed', String(a.done));
-    b.innerHTML = '<span class="chk">'+(a.done?vi('tik'):'')+'</span>' +
+    b.innerHTML = '<span class="chk">'+(a.done?vi('tik', 0, true):'')+'</span>' +
                   '<span class="ic">'+vi(a.ic)+'</span>' +
                   '<span class="tx"><span class="t1">'+a.t1+'</span>' +
                   '<span class="t2">'+a.t2+'</span></span>';
@@ -1087,7 +1141,7 @@ function toggleAmal(i, btn){
   const a = AMAL[i];
   a.done = !a.done;
   btn.setAttribute('aria-pressed', String(a.done));
-  btn.querySelector('.chk').innerHTML = a.done ? vi('tik') : '';
+  btn.querySelector('.chk').innerHTML = a.done ? vi('tik', 0, true) : '';
   state.xp = Math.max(0, state.xp + (a.done ? a.xp : -a.xp));
   state.amanah = Math.max(0, Math.min(100, state.amanah + (a.done ? 2 : -2)));
   toast((a.done ? '+' : '−') + a.xp + ' XP');
@@ -1132,7 +1186,7 @@ function drawVenues(cat){
         '<div class="new">'+v.neu+'</div>' +
         '<div class="note">HARGA AHLI NUSUKI</div></div>' +
         '<button class="act" type="button">TABUNG</button></div>' +
-        (v.bundle ? '<div class="bundle">'+vi('hex')+'<span>'+v.bundle+'</span></div>' : '') +
+        (v.bundle ? '<div class="bundle">'+vi('hex', 0, true)+'<span>'+v.bundle+'</span></div>' : '') +
         '</div>';
     }).join('');
 }
@@ -1143,7 +1197,7 @@ function renderMuh(){
       MOODS.map(function(m, mi){
         return '<button class="mood" type="button" aria-pressed="false" ' +
                'data-s="'+si+'" data-m="'+mi+'">' +
-               '<span class="em">'+vi(m[0])+'</span>'+m[1]+'</button>';
+               '<span class="em">'+vi(m[0], 0, true)+'</span>'+m[1]+'</button>';
       }).join('') + '</div></div>';
   }).join('');
   el('muh-list').addEventListener('click', function(e){
@@ -1170,7 +1224,7 @@ function renderTabs(){
     b.setAttribute('role','tab');
     b.setAttribute('aria-selected', String(t.id === state.screen));
     b.setAttribute('aria-controls', t.id);
-    b.innerHTML = '<span class="gl">'+vi(t.gl)+'</span>'+t.nm;
+    b.innerHTML = '<span class="gl">'+vi(t.gl, 0, true)+'</span>'+t.nm;
     b.addEventListener('click', function(){ go(t.id); });
     bar.appendChild(b);
   });

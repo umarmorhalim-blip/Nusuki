@@ -54,11 +54,19 @@ rank advances and the avatar is rebuilt as the next rank — the app's premise i
 that the avatar reflects real deeds, so the mockup demonstrates that loop
 rather than describing it.
 
-Every glyph is an 8×8 pixel grid emitted as crisp 1×1 SVG rects in the app's
-palette, not an emoji: emoji are round, glossy and come from the system font,
-which reads as a different concept next to the voxels. `'C'` in a grid's
-palette paints with `currentColor`, which is how the tab icons pick up their
-active state without a second set of files.
+Every glyph is an 8×8 pixel grid, not an emoji: emoji are round, glossy and
+come from the system font, which reads as a different concept next to the
+voxels. `vi()` **extrudes** each grid into voxels — every filled pixel becomes
+a cube, and a cube draws its top face only where nothing sits above it and its
+side face only where nothing sits to its right, so depth appears along the
+silhouette exactly as on a real voxel sprite. Front faces are painted last
+because they are the nearest plane. Face brightness reuses the 3D renderer's
+split (top lifted ×1.22, side dropped ×0.7); `'C'` in a grid's palette paints
+with `currentColor` and varies opacity instead, which is how the tab icons pick
+up their active state without a second set of files.
+
+Chrome small enough that extrusion would turn to mush — tab marks, mood faces,
+the tick — passes `flat` and stays 2D.
 
 **One bug worth remembering.** `setSize(w, h, false)` skips writing
 `canvas.style.width/height`. A canvas is a *replaced* element, so with
