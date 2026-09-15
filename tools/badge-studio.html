@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nusuki Badge Studio</title>
+<style>
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:40px 34px 56px; background:#04100a; color:#cfeed8;
+    font-family:"Courier New",ui-monospace,monospace;
+    background-image:
+      radial-gradient(70% 50% at 50% 0%, rgba(77,255,82,.07), transparent 70%),
+      repeating-linear-gradient(0deg, rgba(77,255,82,.02) 0 1px, transparent 1px 3px);
+  }
+  h1{ font-size:15px; letter-spacing:.24em; color:#4dff52; margin:0 0 4px;
+      text-shadow:0 0 14px rgba(77,255,82,.5) }
+  .sub{ font-size:11px; letter-spacing:.16em; color:#5f9d74; margin:0 0 30px }
+  h2{ font-size:10px; letter-spacing:.24em; color:#5f9d74; font-weight:400;
+      margin:34px 0 14px; padding-bottom:8px; border-bottom:1px solid rgba(77,255,82,.18) }
+
+  .hero{ display:flex; align-items:center; gap:34px; flex-wrap:wrap }
+  .hero .cell{ width:300px }
+  .hero .note{ flex:1; min-width:260px; font-size:12px; line-height:1.8; color:#96c7a7 }
+  .hero .note b{ color:#dcffe6; font-weight:400 }
+
+  .grid{ display:grid; grid-template-columns:repeat(6, 1fr); gap:18px 14px }
+  .tiers{ display:grid; grid-template-columns:repeat(3, 180px); gap:20px }
+
+  .cell{ text-align:center }
+  .cell .pic{ position:relative; width:100%; aspect-ratio:1 }
+  .cell .pic img{ width:100%; height:100%; display:block; position:relative; z-index:1 }
+  .cell .pic::after{             /* soft contact shadow */
+    content:""; position:absolute; z-index:0; left:14%; right:14%; bottom:4%;
+    height:12%; border-radius:50%;
+    background:radial-gradient(rgba(0,0,0,.55), transparent 70%);
+  }
+  .cell .nm{ font-size:11px; letter-spacing:.1em; color:#dcffe6; margin-top:2px }
+  .cell .tr{ font-size:8.5px; letter-spacing:.18em; color:#4f8a63; margin-top:2px }
+</style>
+</head>
+<body>
+<h1>NUSUKI — LENCANA VOXEL</h1>
+<p class="sub">CADANGAN REKA BENTUK // MEDALION BINGKAI DENGAN IKON TERUKIR</p>
+
+<h2>SATU MEDALION, DEKAT</h2>
+<div class="hero" id="hero"></div>
+
+<h2>TIGA TINGKAT BINGKAI — IKON SAMA</h2>
+<div class="tiers" id="tiers"></div>
+
+<h2>SEMUA LENCANA</h2>
+<div class="grid" id="grid"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* =====================================================================
+   Badge studio — a design bench, not part of the app.
+   Each badge is a voxel medallion: an octagonal plinth, a stepped rim in
+   its tier's metal, and the icon carved in relief on the face. Relief is
+   derived rather than authored -- an erosion pass raises interior pixels
+   above edge pixels, so every icon domes slightly without a hand-made
+   depth map per icon.
+   ===================================================================== */
+
+const ICONS = {
+  masjid:{p:['#4dff52'], g:['...11...','..1111..','.1....1.','11111111',
+                            '1......1','1..11..1','1.1111.1','11111111']},
+  panah: {p:['#4dff52','#0f3b1e','#f0c02a'],
+          g:['..1111..','.1....1.','1..22..1','1.2332.1',
+             '1.2332.1','1..22..1','.1....1.','..1111..']},
+  tembak:{p:['#4dff52','#f0c02a'],
+          g:['...11...','...11...','...11...','11122111',
+             '11122111','...11...','...11...','...11...']},
+  renang:{p:['#38b3c4'], g:['........','...11...','..1..1..','...11...',
+                            '........','11..11..','..11..11','11..11..']},
+  kuda:  {p:['#c4762f'], g:['..11....','.1111...','11111...','.111111.',
+                            '..111111','..1111..','..11.11.','..1...1.']},
+  kitab: {p:['#e5dcc9'], g:['........','.1....1.','11111111','1..11..1',
+                            '1..11..1','1..11..1','11111111','........']},
+  bola:  {p:['#9fd9b3'], g:['..1111..','.11..11.','1..11..1','1.1111.1',
+                            '1.1111.1','1..11..1','.11..11.','..1111..']},
+  bulan: {p:['#f0c02a'], g:['...111..','..11....','.11.....','.11.....',
+                            '.11.....','.11.....','..11....','...111..']},
+  tasbih:{p:['#38b3c4'], g:['..1111..','.1....1.','1......1','1......1',
+                            '1......1','.1....1.','..1..1..','...11...']},
+  bantu: {p:['#4dff52','#ff6b7a'],
+          g:['.22..22.','.222222.','..2222..','...22...',
+             '........','.111111.','.111111.','..1111..']},
+  lari:  {p:['#4dff52'], g:['...11...','...11...','.111111.','...11...',
+                            '..1111..','.11..11.','11....11','........']}
+};
+
+/* tier -> [plinth, rim metal, inner ring] */
+const TIERS = {
+  nur:    {nm:'NUR',    plinth:0x14241c, rim:0x4dff52, ring:0x9dffa0},
+  gangsa: {nm:'GANGSA', plinth:0x30241a, rim:0xc4762f, ring:0xe8a86a},
+  emas:   {nm:'EMAS',   plinth:0x352b16, rim:0xf0c02a, ring:0xffe08a}
+};
+const BADGE_TIER = {
+  masjid:'emas', bulan:'emas', tasbih:'emas',
+  kitab:'nur',   bantu:'nur',  lari:'nur',
+  panah:'gangsa', tembak:'gangsa', renang:'gangsa',
+  kuda:'gangsa',  bola:'gangsa'
+};
+const LABEL = {masjid:'Subuh', panah:'Pemanah', tembak:'Menembak', renang:'Renang',
+               kuda:'Kuda', kitab:'Tilawah', bola:'Sukan', bulan:'Qiam',
+               tasbih:'Zikir', bantu:'Ihsan', lari:'Aktiviti'};
+
+/* ---------------- chamfered cube, cached per size ---------------- */
+const BEVEL = 0.16, geoCache = {};
+function chamferBox(w, h, d){
+  const key = w.toFixed(2)+'|'+h.toFixed(2)+'|'+d.toFixed(2);
+  if (geoCache[key]) return geoCache[key];
+  const X=w/2, Y=h/2, Z=d/2, E=[X,Y,Z];
+  const b = Math.min(BEVEL, X*0.45, Y*0.45, Z*0.45);
+  const vert = function(full, sx, sy, sz){
+    const sg=[sx,sy,sz];
+    return [0,1,2].map(function(a){ return (a===full ? E[a] : E[a]-b) * sg[a]; });
+  };
+  const tris=[];
+  const push=function(p0,p1,p2){ tris.push([p0,p1,p2]); };
+  for (let a=0;a<3;a++) for (let sgn=-1;sgn<=1;sgn+=2){
+    const o=[(a+1)%3,(a+2)%3];
+    const corner=function(i,j){ const sg=[0,0,0]; sg[a]=sgn; sg[o[0]]=i; sg[o[1]]=j;
+      return vert(a,sg[0],sg[1],sg[2]); };
+    const q=[corner(-1,-1),corner(1,-1),corner(1,1),corner(-1,1)];
+    push(q[0],q[1],q[2]); push(q[0],q[2],q[3]);
+  }
+  for (let a=0;a<3;a++) for (let bx=a+1;bx<3;bx++){
+    const other=3-a-bx;
+    for (let sa=-1;sa<=1;sa+=2) for (let sb=-1;sb<=1;sb+=2){
+      const mk=function(full,so){ const sg=[0,0,0]; sg[a]=sa; sg[bx]=sb; sg[other]=so;
+        return vert(full,sg[0],sg[1],sg[2]); };
+      push(mk(a,-1),mk(a,1),mk(bx,1)); push(mk(a,-1),mk(bx,1),mk(bx,-1));
+    }
+  }
+  for (let sx=-1;sx<=1;sx+=2) for (let sy=-1;sy<=1;sy+=2) for (let sz=-1;sz<=1;sz+=2)
+    push(vert(0,sx,sy,sz), vert(1,sx,sy,sz), vert(2,sx,sy,sz));
+
+  const pos=[], nor=[];
+  tris.forEach(function(p){
+    let n=[
+      (p[1][1]-p[0][1])*(p[2][2]-p[0][2]) - (p[1][2]-p[0][2])*(p[2][1]-p[0][1]),
+      (p[1][2]-p[0][2])*(p[2][0]-p[0][0]) - (p[1][0]-p[0][0])*(p[2][2]-p[0][2]),
+      (p[1][0]-p[0][0])*(p[2][1]-p[0][1]) - (p[1][1]-p[0][1])*(p[2][0]-p[0][0])
+    ];
+    const cen=[0,1,2].map(function(i){ return (p[0][i]+p[1][i]+p[2][i])/3; });
+    const order=(n[0]*cen[0]+n[1]*cen[1]+n[2]*cen[2])<0 ? [0,2,1] : [0,1,2];
+    if (order[1]===2) n=[-n[0],-n[1],-n[2]];
+    const len=Math.hypot(n[0],n[1],n[2])||1; n=[n[0]/len,n[1]/len,n[2]/len];
+    order.forEach(function(k){
+      pos.push(p[k][0], p[k][1], p[k][2]);
+      nor.push(n[0], n[1], n[2]);
+    });
+  });
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('normal',   new THREE.Float32BufferAttribute(nor,3));
+  geoCache[key]=g; return g;
+}
+
+/* cubes of one size merged into one geometry: {x,y,z} offsets */
+function merge(size, offsets){
+  const base = chamferBox(size[0], size[1], size[2]);
+  const bp = base.attributes.position.array, bn = base.attributes.normal.array;
+  const n = bp.length;
+  const pos = new Float32Array(n * offsets.length);
+  const nor = new Float32Array(n * offsets.length);
+  offsets.forEach(function(o, i){
+    const at = i*n;
+    for (let k=0;k<n;k+=3){
+      pos[at+k]   = bp[k]   + o[0];
+      pos[at+k+1] = bp[k+1] + o[1];
+      pos[at+k+2] = bp[k+2] + o[2];
+    }
+    nor.set(bn, at);
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('normal',   new THREE.Float32BufferAttribute(nor,3));
+  return g;
+}
+
+const mats = {};
+function mat(hex, o){
+  o = o || {};
+  const k = hex + '|' + (o.shine||'') + '|' + (o.ei||0);
+  if (!mats[k]){
+    mats[k] = new THREE.MeshPhongMaterial({
+      color: hex,
+      specular: o.shine === 'metal' ? 0xb8c4b2 : 0x4a5a4c,
+      shininess: o.shine === 'metal' ? 70 : 24,
+      emissive: o.emissive || 0x000000,
+      emissiveIntensity: o.ei || 0
+    });
+  }
+  return mats[k];
+}
+
+/* interior pixels sit a cube deeper than edge pixels, so the icon domes */
+function relief(g){
+  const on = function(x,y){ return y>=0 && y<8 && x>=0 && x<8 && g[y][x] !== '.'; };
+  const d = [];
+  for (let y=0;y<8;y++){
+    d.push([]);
+    for (let x=0;x<8;x++){
+      d[y].push(!on(x,y) ? 0
+        : (on(x-1,y) && on(x+1,y) && on(x,y-1) && on(x,y+1)) ? 2 : 1);
+    }
+  }
+  return d;
+}
+
+/* The frame is built from cubes twice the icon's, on their own coarse
+   lattice. That contrast is what makes the medallion read: big blocks are
+   the setting, small blocks are the detail. A frame at the icon's own scale
+   just produced 120 identical cubes of visual noise. */
+const P = 3;                        // frame half-extent, in coarse steps
+const STEP = 2.05;                  // coarse lattice pitch
+const BIG = 2.24;                   // coarse cube size: slight overlap
+
+function medallion(name, tierKey){
+  const icon = ICONS[name], T = TIERS[tierKey];
+  const grp = new THREE.Group();
+
+  const plate = [], edge = [];
+  for (let i=-P; i<=P; i++){
+    for (let j=-P; j<=P; j++){
+      if (Math.abs(i) + Math.abs(j) > P + 2) continue;      // corners notched off
+      const out = Math.max(Math.abs(i), Math.abs(j)) === P;
+      (out ? edge : plate).push([i*STEP, j*STEP, out ? 0.55 : 0]);
+    }
+  }
+  grp.add(new THREE.Mesh(merge([BIG,BIG,2.3], plate), mat(T.plinth)));
+  grp.add(new THREE.Mesh(merge([BIG,BIG,2.3], edge),
+                         mat(T.rim, {shine:'metal', emissive:T.ring, ei:0.10})));
+
+  /* the icon, carved in relief and sitting clear of the plate */
+  const dmap = relief(icon.g);
+  const byColour = {};
+  for (let y=0;y<8;y++){
+    for (let x=0;x<8;x++){
+      const c = icon.g[y][x];
+      if (c === '.') continue;
+      const hex = icon.p[+c - 1];
+      const z = 1.75 + dmap[y][x] * 0.5;
+      (byColour[hex] = byColour[hex] || []).push([x - 3.5, 3.5 - y, z]);
+    }
+  }
+  Object.keys(byColour).forEach(function(hex){
+    grp.add(new THREE.Mesh(merge([1.1,1.1,2.0], byColour[hex]), mat(hex)));
+  });
+  return grp;
+}
+
+/* ---------------- bake ---------------- */
+const SIZE = 560;
+const bc = document.createElement('canvas');
+bc.width = bc.height = SIZE;
+const rnd = new THREE.WebGLRenderer({canvas:bc, antialias:true, alpha:true,
+                                     preserveDrawingBuffer:true});
+rnd.setClearColor(0x000000, 0);
+
+const sc = new THREE.Scene();
+sc.add(new THREE.AmbientLight(0x35403a, 0.62));
+sc.add(new THREE.HemisphereLight(0x6a9a7c, 0x0a1610, 0.42));
+const key = new THREE.DirectionalLight(0xfff6e6, 1.0);  key.position.set(-26,40,52); sc.add(key);
+const rimL = new THREE.DirectionalLight(0x86ffa4, 0.55); rimL.position.set(44,-14,-30); sc.add(rimL);
+const rimR = new THREE.DirectionalLight(0xffd7a8, 0.38); rimR.position.set(-40,26,-34); sc.add(rimR);
+const fill = new THREE.DirectionalLight(0xbfe8ff, 0.2);  fill.position.set(30,18,40); sc.add(fill);
+
+const cam = new THREE.OrthographicCamera(-10.4, 10.4, 10.4, -10.4, 0.1, 400);
+cam.position.set(0, 0, 120);
+cam.lookAt(0, 0, 0);
+
+function bake(name, tier){
+  const g = medallion(name, tier);
+  g.rotation.set(0.27, -0.38, 0);
+  sc.add(g);
+  rnd.render(sc, cam);
+  const url = bc.toDataURL('image/png');
+  sc.remove(g);
+  return url;
+}
+
+function cell(name, tier, showTier){
+  return '<div class="cell"><div class="pic"><img src="' + bake(name, tier) +
+         '" alt=""></div><div class="nm">' + LABEL[name] + '</div>' +
+         (showTier ? '<div class="tr">' + TIERS[tier].nm + '</div>' : '') + '</div>';
+}
+
+document.getElementById('hero').innerHTML =
+  cell('masjid', 'emas', false) +
+  '<div class="note">' +
+  '<b>Bingkai bersudut terpotong</b> — empat sudut dibuang, jadi ia terbaca sebagai pingat, bukan jubin.<br>' +
+  '<b>Dua skala kubus</b> — kerangka dibina daripada kubus dua kali besar ikon. Kontras itulah yang membuatkan ia terbaca: blok besar ialah tempat duduk, blok kecil ialah perincian.<br>' +
+  '<b>Relief automatik</b> — satu pas hakisan menaikkan piksel dalaman satu kubus di atas piksel tepi, jadi setiap ikon melengkung sendiri tanpa peta kedalaman ditulis tangan.<br>' +
+  '<b>Tiga tingkat</b> — Gangsa, Nur, Emas. Tingkat hanya menukar bahan plinth dan bingkai; ikon kekal sama.' +
+  '</div>';
+
+document.getElementById('tiers').innerHTML =
+  ['gangsa','nur','emas'].map(function(t){ return cell('panah', t, true); }).join('');
+
+document.getElementById('grid').innerHTML =
+  Object.keys(ICONS).map(function(n){
+    return cell(n, BADGE_TIER[n], true);
+  }).join('');
+
+rnd.dispose();
+window.STUDIO_READY = true;
+</script>
+</body>
+</html>
