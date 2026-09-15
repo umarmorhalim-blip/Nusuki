@@ -92,6 +92,95 @@ header{display:flex; align-items:center; gap:16px; flex-wrap:wrap;
   cursor:pointer}
 .ghost:hover{border-color:var(--line2); color:var(--ink)}
 
+/* ---------- page nav ---------- */
+.pages{display:flex; gap:4px; padding:0 0 16px; margin:-4px 0 0}
+.pages button{background:none; border:0; border-bottom:2px solid transparent;
+  color:var(--ink3); font:inherit; font-size:14px; font-weight:600;
+  padding:8px 4px 9px; margin-right:18px; cursor:pointer}
+.pages button[aria-current=true]{color:var(--ink);
+  border-bottom-color:var(--neon)}
+.pages button:hover{color:var(--ink2)}
+
+/* ---------- profiling matrix ---------- */
+.mx{width:100%; border-collapse:separate; border-spacing:2px;
+    font-size:11.5px}
+.mx th{color:var(--ink3); font-weight:600; font-size:10px;
+  letter-spacing:.1em; padding:3px 5px; border:0; text-align:center}
+.mx th.rh{text-align:left; white-space:nowrap}
+.mx td{text-align:center; padding:7px 5px; border:0; border-radius:4px;
+  background:#101d15; font-family:ui-monospace,Menlo,Consolas,monospace;
+  color:var(--ink2)}
+.mx td.z{color:var(--ink3); opacity:.45}
+.mx td.rh{text-align:left; background:none; font-family:inherit;
+  color:var(--ink2); white-space:nowrap; padding-left:0}
+.mx tr.tot td{background:none; color:var(--ink); font-weight:700}
+
+/* ---------- halaqah cards ---------- */
+.hqs{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+.hq{background:var(--surf2); border:1px solid var(--line);
+  border-radius:12px; padding:14px}
+.hq h3{margin:0; font-size:13px; letter-spacing:.14em; display:flex;
+  align-items:baseline; gap:8px}
+.hq h3 b{font-size:22px; letter-spacing:0;
+  font-family:ui-monospace,Menlo,Consolas,monospace}
+.hq .obj{font-size:12px; color:var(--ink2); margin:6px 0 3px;
+  line-height:1.45}
+.hq .meta{font-size:10.5px; letter-spacing:.1em; color:var(--ink3);
+  margin-bottom:11px}
+.mrow{display:grid; grid-template-columns:30px 1fr auto; gap:9px;
+  align-items:center; padding:7px 0; border-top:1px solid var(--line)}
+.mrow .bust{width:30px; height:30px; border-radius:7px}
+.mrow .nm{font-size:12.5px; font-weight:600}
+.mrow .um{font-size:10.5px; color:var(--ink3); margin-top:1px}
+.tag{font-size:9px; letter-spacing:.1em; padding:2px 6px; border-radius:4px;
+  background:var(--surf3); color:var(--ink3); white-space:nowrap;
+  font-weight:600}
+.tag.jauh{color:var(--st-sapa); background:#2a200c}
+.tag.behind{color:var(--st-sapa)} .tag.ahead{color:var(--st-naik)}
+
+/* ---------- f2f planner ---------- */
+.plan{display:grid; grid-template-columns:96px repeat(4,1fr); gap:3px;
+  align-items:stretch}
+.plan .ph{font-size:10px; letter-spacing:.1em; color:var(--ink3);
+  text-align:center; padding-bottom:3px}
+.plan .rh{font-size:11.5px; color:var(--ink2); display:flex;
+  align-items:center; white-space:nowrap}
+.slotb{min-height:46px; border-radius:7px; background:#101d15;
+  box-shadow:inset 0 0 0 1px #16281d; cursor:pointer; padding:6px;
+  font-size:10px; line-height:1.35; color:var(--ink3); text-align:left;
+  border:0; font-family:inherit; display:block; width:100%}
+.slotb:hover{box-shadow:inset 0 0 0 1px var(--line2)}
+.slotb.on{color:#06120b; box-shadow:none; font-weight:600}
+.slotb small{display:block; font-size:8.5px; letter-spacing:.09em;
+  opacity:.8; margin-bottom:2px}
+
+/* ---------- rewards ---------- */
+.rw{display:grid; gap:9px}
+.rwi{display:grid; grid-template-columns:auto 1fr auto; gap:10px;
+  align-items:center; background:var(--surf2); border-radius:9px;
+  padding:9px 11px}
+.rwi .t{font-size:9px; letter-spacing:.1em; font-weight:700;
+  padding:3px 6px; border-radius:4px; color:#06120b}
+.rwi .n{font-size:12.5px; color:var(--ink)}
+.rwi .w{font-size:11px; color:var(--ink3); margin-top:1px}
+.rwi .c{font-size:11px; color:var(--ink2);
+  font-family:ui-monospace,Menlo,Consolas,monospace}
+
+/* ---------- content library ---------- */
+.kon{display:grid; grid-template-columns:repeat(2,1fr); gap:14px}
+.ko{background:var(--surf2); border-radius:11px; padding:13px 14px}
+.ko h4{margin:0 0 5px; font-size:13px; font-weight:650; line-height:1.4}
+.ko .pn{font-size:11.5px; color:var(--ink3); line-height:1.55;
+  margin:0 0 11px}
+.ko .grp{font-size:10px; letter-spacing:.14em; color:var(--ink3);
+  margin:9px 0 5px}
+.ko ol{margin:0; padding-left:17px; font-size:12px; color:var(--ink2);
+  line-height:1.6}
+.ko ol.amali{color:var(--g5)}
+.gap{background:#2a200c; border:1px solid #4a3a12; border-radius:11px;
+  padding:14px; font-size:12.5px; color:var(--ink2); line-height:1.6}
+.gap b{color:var(--st-sapa)}
+
 /* ---------- stat tiles ---------- */
 .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;
        margin-bottom:20px}
@@ -147,9 +236,9 @@ header{display:flex; align-items:center; gap:16px; flex-wrap:wrap;
 
 /* ---------- mentee panel ---------- */
 .mpanel{position:sticky; top:22px}
-.mhead{display:grid; grid-template-columns:118px 1fr; gap:16px;
+.mhead{display:grid; grid-template-columns:132px 1fr; gap:16px;
   align-items:center}
-.slot{position:relative; height:158px; border-radius:11px;
+.slot{position:relative; height:192px; border-radius:11px;
   background:linear-gradient(180deg,#0b1a12,#081109);
   border:1px solid var(--line); overflow:hidden}
 .slot::after{content:''; position:absolute; inset:auto 0 0 0; height:34%;
@@ -306,6 +395,8 @@ body.fit #gl{display:none}
    the page itself stacks */
 @container board (max-width:820px){
   .pair{grid-template-columns:1fr}
+  .hqs{grid-template-columns:1fr}
+  .kon{grid-template-columns:1fr}
 }
 @container board (max-width:560px){
   .wrap{padding:16px 14px 60px}
@@ -315,6 +406,8 @@ body.fit #gl{display:none}
   .hm-x{padding-left:65px}
   .dist .brow{grid-template-columns:86px 1fr 28px}
   .brow{grid-template-columns:62px 1fr}
+  .plan{grid-template-columns:66px repeat(4,1fr)}
+  .mx{font-size:10px}
 }
 </style>
 
@@ -343,6 +436,13 @@ body.fit #gl{display:none}
     <div class="avatar-chip"><svg viewBox="0 0 8 8" width="18" height="18"
       shape-rendering="crispEdges" id="chip-ico"></svg></div>
   </header>
+
+  <nav class="pages" id="pages">
+    <button data-pg="pantau" aria-current="true">Pantau</button>
+    <button data-pg="plan" aria-current="false">Perancangan</button>
+  </nav>
+
+  <div id="pg-pantau">
 
   <div class="filters">
     <span class="flabel">HALAQAH</span>
@@ -480,6 +580,85 @@ body.fit #gl{display:none}
 
     </div>
   </div>
+  </div><!-- /pg-pantau -->
+
+  <!-- ==================================================================
+       PERANCANGAN. The Pantau page answers "who needs me today"; this one
+       answers "so what am I actually going to do". Everything on it is
+       taken from MODUL TARBIAH BANGSAWAN ZON A -- the age bands, the
+       01/02/03 objectives, the wasilah, the 40/40/10/10 split -- because
+       a planner that invents its own curriculum is worse than no planner.
+       ================================================================== -->
+  <div id="pg-plan" hidden>
+
+    <div class="tiles" id="plan-tiles"></div>
+
+    <div class="pair">
+      <section class="card" style="margin:0">
+        <div class="ch"><h2>Profiling</h2><span class="n">FASA 1</span></div>
+        <p class="sub">Taburan umur × jenis sekolah. Ini keluaran Fasa 1
+          dalam modul, dan ia yang menentukan pecahan halaqah — bukan
+          sebaliknya.</p>
+        <div id="prof"></div>
+        <p class="note">Modul: <b>“Susun group anak-anak mengikut pecahan
+          umur. Ini bagi meraikan tabiat psikologi anak-anak.”</b></p>
+      </section>
+
+      <section class="card" style="margin:0">
+        <div class="ch"><h2>Peranan</h2><span class="n">WASILAH</span></div>
+        <p class="sub">Pembahagian tanggungjawab dalam modul. Murabbi
+          memegang 40% — bukan 100%.</p>
+        <div id="peranan"></div>
+        <div class="legend" id="peranan-legend"></div>
+        <div id="konsep" style="margin-top:16px"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="ch">
+        <h2>Set halaqah</h2>
+        <span class="n" id="hq-n"></span>
+      </div>
+      <p class="sub">Tahap datang daripada <b>umur</b> — itu hak, bukan
+        pencapaian. Pangkat datang daripada <b>amal</b>. Jurang antara
+        dua-dua tu maklumat untuk murabbi, bukan masalah untuk
+        diperbetulkan.</p>
+      <div id="halaqah"></div>
+    </section>
+
+    <div class="pair">
+      <section class="card" style="margin:0">
+        <div class="ch"><h2>Sesi F2F</h2><span class="n">4 MINGGU</span></div>
+        <p class="sub">Tiga tingkat sesi kumpulan, dan satu baris untuk
+          sentuhan individu. Klik petak untuk tanda atau buang.</p>
+        <div id="f2f"></div>
+        <div class="legend" id="f2f-legend"></div>
+        <div id="sentuh"></div>
+      </section>
+
+      <section class="card" style="margin:0">
+        <div class="ch"><h2>Gembirakan anak buah</h2><span class="n">HADIAH</span></div>
+        <p class="sub">Dalam modul ini belanja bukan bonus — ia wasilah.</p>
+        <div id="hadiah"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="ch">
+        <h2>Kandungan</h2>
+        <span class="n" id="kon-n"></span>
+      </div>
+      <p class="sub">Bahan dan wasilah mengikut tahap objektif, seperti
+        yang tersenarai dalam modul. Setiap objektif ada teori dan amali.</p>
+      <div class="seg" id="kon-tab" role="group" style="margin-bottom:16px">
+        <button data-t="01" aria-pressed="true">01</button>
+        <button data-t="02" aria-pressed="false">02</button>
+        <button data-t="03" aria-pressed="false">03</button>
+      </div>
+      <div id="konten"></div>
+    </section>
+
+  </div><!-- /pg-plan -->
 </div>
 </div></div>
 
@@ -1125,29 +1304,155 @@ const MOOD_ROWS = [
   {k:'gesa',   nm:'Tergesa',   css:'--c-gesa'}
 ];
 
+/* =====================================================================
+   MODUL TARBIAH BANGSAWAN ZON A -- the source of everything on the
+   Perancangan page. Nothing here is invented: the age bands, the three
+   objective tiers, every teori and amali, and the 40/40/10/10 split are
+   transcribed from the module. Where the module stops, this says so
+   rather than filling the hole.
+   ===================================================================== */
+
+/* Age -> band -> level -> objective tier. The module bands by school
+   form; the level numbering is Nusuki's own. They line up exactly:
+   tahun 6 is 12, F1-F2 is 13-14, F3 is 15, F4-F5 is 16-17. */
+const BANDS = [
+  {k:'pramen', nm:'PRA MEN',  form:'Tahun 6', umur:[12,12], lvl:[1,1], tahap:'01'},
+  {k:'mr',     nm:'MR',       form:'F1 – F2', umur:[13,14], lvl:[2,3], tahap:'02'},
+  {k:'mt',     nm:'MT',       form:'F3',      umur:[15,15], lvl:[4,4], tahap:'03'},
+  {k:'ma',     nm:'MA',       form:'F4 – F5', umur:[16,17], lvl:[5,5], tahap:'03'},
+  {k:'praipt', nm:'PRA IPT',  form:'18 >',    umur:[18,19], lvl:[5,5], tahap:'03'}
+];
+function bandOf(umur){
+  return BANDS.find(function(b){ return umur >= b.umur[0] && umur <= b.umur[1]; })
+      || BANDS[BANDS.length - 1];
+}
+/* the level the module would give a child of this age -- their *right*,
+   not their achievement */
+function lvlOf(umur){
+  return ({12:1, 13:2, 14:3, 15:4, 16:5, 17:5})[umur] || 5;
+}
+
+const SEKOLAH = [
+  {k:'harakah', nm:'Sekolah Harakah', short:'HARAKAH', f2f:true},
+  {k:'jauh',    nm:'Asrama jauh',     short:'ASRAMA JAUH', f2f:false},
+  {k:'dekat',   nm:'Asrama dekat',    short:'ASRAMA DEKAT', f2f:true},
+  {k:'harian',  nm:'Sekolah harian',  short:'HARIAN', f2f:true}
+];
+
+const TAHAP = {
+  '01': {nm:'Kesedaran nak jadi baik', umur:'12 tahun · lvl 1',
+         col:'--g3'},
+  '02': {nm:'Sedar realiti dan ingin ubah realiti', umur:'13–14 tahun · lvl 2–3',
+         col:'--g4'},
+  '03': {nm:'Memacu usaha dakwah dan tarbiah remaja', umur:'15–17 tahun · lvl 4–5',
+         col:'--g5'}
+};
+
+/* Wasilah, verbatim. `teori` and `amali` are the module's two columns. */
+const KONTEN = {
+  '01': [
+    {ob:'Memupuk intima’ kepada islam',
+     pn:'Memahami tujuan hidup, mengenali tabiat islam, realiti islam, kemuliaan islam. Mengamalkan islam secara syumul.',
+     teori:['Memaknai Ruh Solat','Hidup dengan Al-Quran','Kisah-kisah hidup sahabat'],
+     amali:['Explorace masjid bersejarah','Ziarah dan khidmat di kubur','Ziarah persatuan muallaf']},
+    {ob:'Kukuhkan hubungan dengan Allah',
+     pn:'Penghayatan dalam hati — khusyu’ dalam ibadah, muraqabatullah.',
+     teori:['Meyakini taqdir Allah','Memupuk ikhlas dalam diri','Mujahadah melawan nafsu'],
+     amali:['Menyertai pertandingan (futsal, nasyid)','Aktiviti uzlah dalam masyarakat','Hero subuh','Qiam usrah','Tilawah Quran di tempat awam (MRT, taman, mall)']},
+    {ob:'Cintakan Rasul dan mencontohinya',
+     pn:'Sikap dan akhlak terpuji: ringan tulang, proaktif, menghormati orang lain, berkata benar, pemaaf, prihatin, tepat masa.',
+     teori:['Rasulullah sebagai qudwah','Jujur','Amanah','Lemah lembut / pengasih','Usrah (Maza ya’ni: Akhlak)','Hadis 40 — hadis 12, 13, 15, 16, 17, 20'],
+     amali:['Ziarah pameran / video sirah Nabi (Yayasan Restu, Shah Alam)','Usrah: ziarah rumah bangsawan','Usrah: jaulah ke sungai','Bangsawan: khidmat masyarakat']},
+    {ob:'Pupuk kesedaran nak masuk syurga',
+     pn:'Perasaan rindu dan membuak-buak untuk jadi ahli syurga; bercita-cita untuk mati syahid.',
+     teori:['Tazkirah: kisah-kisah sahabat','Hadis-hadis berkaitan ahli syurga'],
+     amali:['Projek usrah: dream big — amalan paling mudah masuk syurga']},
+    {ob:'Lahirkan perasaan insaf dan takut dengan azab akhirat dan alam kubur',
+     pn:'Merasa takut dan berhati-hati untuk melakukan maksiat dan perkara mubahat.',
+     teori:['Tazkirah: kisah-kisah para salaf','Hadis-hadis berkaitan kematian dan alam akhirat'],
+     amali:['Projek usrah: ziarah kubur','Projek bangsawan: tadabbur masyarakat']},
+    {ob:'Kesedaran realiti islam dan nak buat sesuatu',
+     pn:'Merasai ketinggian islam dan rasa kehilangan bila islam bukan lagi di puncak.',
+     teori:['Mengkaji kegemilangan umat Islam melalui video ceramah dan artikel'],
+     amali:['Jelajah muzium yang mempamerkan kegemilangan Islam','Projek hasilkan bahan kesedaran kegemilangan Islam']}
+  ],
+  '02': [
+    {ob:'Memahami permasalahan dan cabaran umat islam, khususnya remaja islam',
+     pn:'Melihat satu persatu permasalahan umat, strategi musuh dalam serangan pemikiran terhadap remaja muslim, sehingga terbina perasaan untuk bertindak.',
+     teori:['Tadabbur nasib umat islam (IRIS) — bina kehendak nasional','Memahami realiti islam & ancaman terhadapnya hari ini','Memahami hakikat hamba','Memahami hakikat pertembungan di Palestin'],
+     amali:['Ziarah agensi H — kajian ringan realiti masyarakat','Projek hasilkan bahan kesedaran realiti umat (digital / fizikal)']},
+    {ob:'Memahami tanggungjawab dakwah',
+     pn:'Kesedaran untuk tidak hidup dan baik seorang diri. Memahami peranan dan tanggungjawab asas seorang muslim terhadap umat (tugas khalifah).',
+     teori:['Sirah nabawi & khulafa rasyidin; podcast TS (Sirah untuk pemula)','Daurah dan nadwah mengenai wujubud dakwah','Memahami hakikat dan peranan dakwah dalam konteks tamadun'],
+     amali:['Ziarah qudama dan pimpinan H / agensi untuk mengambil pengalaman jalan dakwah (pengkaderan ISMA, PEMBINA, BLN)']},
+    {ob:'Merancang dan melakukan dakwah fardiah',
+     pn:'Mengimani tarbiah adalah asas dalam mengubah seseorang. Mula melakukan DF terhadap kenalan terdekat — rakan sekolah, jiran. Mula ingin menjadi qudwah.',
+     teori:['Pengisian dakwah fardiah melalui daurah','Video: cara mempengaruhi mad’u'],
+     amali:['Kongsi hadis pilihan kepada rakan yang ingin dijadikan mad’u','Laksana DF mengikut marhalah yang betul (taaruf, bina iman) di bawah pantauan mas’ul']},
+    {ob:'Menjadi tenaga sokongan bagi projek dakwah remaja',
+     pn:'Mula sertai amal dalam agensi remaja dan projek dakwah komuniti setempat sebagai tenaga sokongan.',
+     teori:['Rujukan mentaujih anak buah melalui Majmuat Rasail'],
+     amali:[], trunc:true}
+  ],
+  /* The module lists 03's objectives but its wasilah table stops partway
+     through 02 -- the document we have ends mid-sentence. These are the
+     objectives as written; the teori and amali are genuinely absent, and
+     showing them as empty is the point. */
+  '03': [
+    {ob:'Memahami dan memimpin amal dakwah remaja', pn:'', teori:[], amali:[], gap:true},
+    {ob:'Memahami keperluan amal jamai’e', pn:'', teori:[], amali:[], gap:true},
+    {ob:'Memahami kepentingan berjihad dan watan berdaulat',
+     pn:'Modul menanda: sesuai fasa nak habis sekolah.', teori:[], amali:[], gap:true}
+  ]
+};
+
+const PERANAN = [
+  {nm:'Institusi Harakah', pc:40, col:'--g2',
+   d:['Menyusun dan menjalankan MTB','Memantau perjalanan MTB','Perlatihan perlaksanaan MTB kepada murobbi','Menyusun libat urus ibu bapa']},
+  {nm:'Masulin (murabbi)', pc:40, col:'--g4',
+   d:['Menjalankan MTB di cawangan (usrah, program bulanan, tahunan)','Menjadi “abang” dari sudut hubungan hati','Menjadi “ustaz” dalam hal islam dan fikrah','Menjadi “syeikh” dalam hal hati','Menjadi “pemimpin” dalam menerajui jalan']},
+  {nm:'Ibu bapa', pc:10, col:'--c-lena',
+   d:['Tenaga sokongan MTB di rumah','Melorongkan anak kepada institusi','Sokongan transport, kewangan, penempatan']},
+  {nm:'Sekolah', pc:10, col:'--st-senyap',
+   d:['Medan amali untuk anak-anak']}
+];
+
+const KONSEP = [
+  {nm:'Imaniyah',  d:'Tazkiyah, tasyji’'},
+  {nm:'Attractive', d:'Aktiviti seronok dan rare'},
+  {nm:'Praktikal', d:'Seimbang teori + amali'}
+];
+
 function rng(seed){
   let s = seed >>> 0;
   return function(){ s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
 }
 
 const PEOPLE = [
-  {nm:'Ahmad Zulhilmi',      r:4, consist:.86, drift:+0.6, silence:0, seed:1207},
-  {nm:'Muhammad Irfan',      r:3, consist:.81, drift:-2.4, silence:0, seed:3311},
-  {nm:'Nurhakim Danial',     r:2, consist:.44, drift:-3.1, silence:4, seed:509},
-  {nm:'Aiman Syafiq',        r:1, consist:.38, drift:+2.8, silence:1, seed:8821},
-  {nm:'Haziq Mustaqim',      r:5, consist:.93, drift:+0.2, silence:0, seed:4104},
-  {nm:'Amir Hamzah',         r:3, consist:.72, drift:+0.4, silence:0, seed:667},
-  {nm:'Luqman Hakimi',       r:2, consist:.63, drift:-0.5, silence:0, seed:2290},
-  {nm:'Firdaus Ariff',       r:2, consist:.51, drift:-0.8, silence:6, seed:7715},
-  {nm:'Zaid Hariz',          r:1, consist:.47, drift:+1.1, silence:2, seed:1583},
-  {nm:'Ridzwan Nasrullah',   r:4, consist:.88, drift:+1.4, silence:0, seed:9042},
-  {nm:'Syed Umair',          r:3, consist:.69, drift:-0.3, silence:1, seed:3756},
-  {nm:'Khairul Anwar',       r:2, consist:.58, drift:+3.4, silence:0, seed:6128}
+  {nm:'Ahmad Zulhilmi',    r:4, umur:15, sk:'harakah', consist:.86, drift:+0.6, silence:0, seed:1207, riang:9},
+  {nm:'Muhammad Irfan',    r:3, umur:16, sk:'jauh',    consist:.81, drift:-2.4, silence:0, seed:3311, riang:74},
+  {nm:'Nurhakim Danial',   r:2, umur:14, sk:'harian',  consist:.44, drift:-3.1, silence:4, seed:509,  riang:52},
+  {nm:'Aiman Syafiq',      r:1, umur:12, sk:'harian',  consist:.38, drift:+2.8, silence:1, seed:8821, riang:16},
+  {nm:'Haziq Mustaqim',    r:5, umur:17, sk:'harakah', consist:.93, drift:+0.2, silence:0, seed:4104, riang:21},
+  {nm:'Amir Hamzah',       r:3, umur:14, sk:'dekat',   consist:.72, drift:+0.4, silence:0, seed:667,  riang:33},
+  {nm:'Luqman Hakimi',     r:2, umur:13, sk:'harian',  consist:.63, drift:-0.5, silence:0, seed:2290, riang:12},
+  {nm:'Firdaus Ariff',     r:2, umur:15, sk:'jauh',    consist:.51, drift:-0.8, silence:6, seed:7715, riang:88},
+  {nm:'Zaid Hariz',        r:1, umur:12, sk:'harian',  consist:.47, drift:+1.1, silence:2, seed:1583, riang:41},
+  {nm:'Ridzwan Nasrullah', r:4, umur:16, sk:'dekat',   consist:.88, drift:+1.4, silence:0, seed:9042, riang:7},
+  {nm:'Syed Umair',        r:3, umur:14, sk:'harian',  consist:.69, drift:-0.3, silence:1, seed:3756, riang:27},
+  {nm:'Khairul Anwar',     r:2, umur:13, sk:'harian',  consist:.58, drift:+3.4, silence:0, seed:6128, riang:5}
 ];
+/* `riang` is days since this mutarabbi was last on the receiving end of
+   something enjoyable. The module calls that a wasilah, not a bonus, so
+   it is tracked like one. */
 
 /* hydrate: 12-week Nur Amanah trend, 28x5 mutabaah grid, 28-day
    muhasabah tallies per prayer */
 PEOPLE.forEach(function(p, idx){
+  p.band = bandOf(p.umur);
+  p.tahap = p.band.tahap;
+  p.lvlHak = lvlOf(p.umur);        /* what the module gives them by age */
+  p.sekolah = SEKOLAH.find(function(x){ return x.k === p.sk; });
   const R = rng(p.seed);
   const base = 34 + p.consist * 52;
 
@@ -1290,10 +1595,18 @@ function bakeBusts(){
     BUST[i] = c.toDataURL('image/png');
 
     /* and the whole figure, for the fit-to-width view where the live
-       viewport is switched off */
-    const b = 17 * cfg.scale;
-    cam.position.set(6 * cfg.scale, b + 4, 62 * cfg.scale);
-    cam.lookAt(0, b, 0);
+       viewport is switched off -- framed from its own bounds too */
+    g.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(g);
+    AVBOX = AVBOX ? AVBOX.union(bb) : bb.clone();
+    const sz = new THREE.Vector3(), mid = new THREE.Vector3();
+    bb.getSize(sz); bb.getCenter(mid);
+    const ht = Math.tan(cam.fov * Math.PI / 360);
+    const usz = new THREE.Vector3(), umid = new THREE.Vector3();
+    AVBOX.getSize(usz); AVBOX.getCenter(umid);
+    const dd = Math.max(usz.y / 2, Math.max(usz.x, usz.z) / 2 * 0.82) * 1.12 / ht;
+    cam.position.set(dd * 0.10, umid.y + dd * 0.10, dd * 0.985);
+    cam.lookAt(0, umid.y, 0);
     r.render(sc, cam);
     BODY[i] = c.toDataURL('image/png');
 
@@ -1314,6 +1627,14 @@ function bakeBusts(){
    never be able to blank the thing a mentor came to read.
    ===================================================================== */
 const slotEl = document.getElementById('slot-mentee');
+/* One box that contains all five ranks, accumulated while the busts are
+   baked. Framing each figure to its own bounds stops the cropping but
+   also flattens the height progression -- an Adiguru fitted to the slot
+   looks exactly as tall as an Anak Dagang, and height is one of the
+   things the ranks say. So every rank is framed with the same camera and
+   the same ground line: rank 1 reads short, rank 5 fills the slot, and
+   nothing is ever cut off. */
+let AVBOX = null;
 let setAvatar = function(){};       /* replaced by boot3D when it runs */
 let startLoop = function(){};
 let HAS3D = false;
@@ -1335,6 +1656,26 @@ const lamp = new THREE.PointLight(0xb6ffcf, 0.75, 78, 2); lamp.position.set(0,46
 
 const cam = new THREE.PerspectiveCamera(32, 1, 0.5, 400);
 let avatar = null, avScale = 1;
+
+/* Fit a camera to a bounding box instead of guessing distances. The hand-
+   tuned numbers cropped the feet: they were derived for one rank at one
+   slot aspect, and every other combination missed. The box is measured
+   from the built figure, and the width uses the larger of its x and z
+   extent because the figure turns. */
+function fitTo(camera, box, aspect, margin){
+  const size = new THREE.Vector3(), mid = new THREE.Vector3();
+  box.getSize(size); box.getCenter(mid);
+  const halfTan = Math.tan(camera.fov * Math.PI / 360);
+  const halfH = size.y / 2 * (1 + margin);
+  /* The width term is deliberately under-weighted. A drawn keris widens
+     the box by a third, and taking it at face value shrank ranks 4 and 5
+     to two-thirds the size of rank 1 in the same slot. Letting a blade
+     tip run close to the edge is the better trade: the figure is what
+     the murabbi is looking at. */
+  const halfW = Math.max(size.x, size.z) / 2 * (1 + margin) * 0.82;
+  const dist = Math.max(halfH, halfW / Math.max(aspect, 0.01)) / halfTan;
+  return {mid:mid, dist:dist};
+}
 
 setAvatar = function(r){
   if (avatar) scene.remove(avatar);
@@ -1385,15 +1726,17 @@ function frame(){
   renderer.setScissorTest(true);
 
   const q = slotEl.getBoundingClientRect();
-  if (q.width && q.bottom > 0 && q.top < H){
+  if (AVBOX && q.width && q.bottom > 0 && q.top < H){
     const y = H - q.bottom;
     renderer.setViewport(q.left, y, q.width, q.height);
     renderer.setScissor(q.left, y, q.width, q.height);
     cam.aspect = q.width / q.height;
-    /* frame the whole figure, proportional to the rank's scale so the
-       tall Adiguru is not cut off and the short Anak Dagang is not lost */
-    cam.position.set(6 * avScale, 21 * avScale, 62 * avScale);
-    cam.lookAt(0, 17 * avScale, 0);
+    /* the bob is part of the silhouette, so leave room for it in the
+       margin rather than letting it clip at the extremes */
+    const f = fitTo(cam, AVBOX, cam.aspect, 0.14);
+    const d = f.dist;
+    cam.position.set(d * 0.10, f.mid.y + d * 0.10, d * 0.985);
+    cam.lookAt(0, f.mid.y, 0);
     cam.updateProjectionMatrix();
     renderer.render(scene, cam);
   }
@@ -1676,7 +2019,7 @@ function renderTriage(){
     el('triage').insertAdjacentHTML('beforeend',
       '<div class="note" style="margin-top:13px">' + SPILL.length
       + ' lagi menunjukkan isyarat yang sama tetapi lebih perlahan — '
-      + SPILL.map(function(p){ return p.nm.split(' ')[0]; }).join(', ')
+      + SPILL.map(function(p){ return shortName(p.nm); }).join(', ')
       + '. ' + (many ? 'Mereka tidak hilang; mereka' : 'Dia tidak hilang; dia')
       + ' masuk ke <b>topik halaqah</b>, sebab pola yang dikongsi ramai '
       + 'bukan lagi hal peribadi.</div>');
@@ -1684,7 +2027,7 @@ function renderTriage(){
   el('triage').querySelectorAll('.trow').forEach(function(b){
     b.addEventListener('click', function(e){
       if (e.target.classList.contains('act')){
-        toast(b.dataset.nm.split(' ')[0] + ' — catat taujihat selepas menyapa.');
+        toast(shortName(b.dataset.nm) + ' — catat taujihat selepas menyapa.');
       }
       select(PEOPLE.find(function(p){ return p.nm === b.dataset.nm; }));
     });
@@ -1762,6 +2105,347 @@ function renderTopic(){
       + 'ini, jadi amal paling lemah yang jadi topik.</div>';
   }
 }
+
+/* =====================================================================
+   Perancangan page renderers
+   ===================================================================== */
+const HQ = ['01','02','03'];
+
+/* "Muhammad Irfan" shortens to Irfan, not Muhammad -- the first token is
+   a teknonym half the halaqah shares, so it identifies nobody. */
+const TEKNONYM = ['muhammad','mohd','muhd','mohamad','ahmad','syed','nur','abdul'];
+function shortName(nm){
+  const t = nm.split(' ');
+  return (t.length > 1 && TEKNONYM.indexOf(t[0].toLowerCase()) >= 0) ? t[1] : t[0];
+}
+function membersOf(t){
+  return PEOPLE.filter(function(p){ return p.tahap === t; });
+}
+
+function renderProfiling(){
+  let s = '<table class="mx"><thead><tr><th class="rh">SEKOLAH</th>'
+        + BANDS.map(function(b){
+            return '<th>' + b.nm + '<br><span style="opacity:.6;'
+              + 'letter-spacing:0">' + b.form + '</span></th>'; }).join('')
+        + '<th>JUM</th></tr></thead><tbody>';
+  const colTot = BANDS.map(function(){ return 0; });
+  SEKOLAH.forEach(function(sk){
+    const row = BANDS.map(function(b){
+      return PEOPLE.filter(function(p){
+        return p.sk === sk.k && p.band.k === b.k; }).length;
+    });
+    row.forEach(function(v, i){ colTot[i] += v; });
+    const tot = row.reduce(function(a, b){ return a + b; }, 0);
+    s += '<tr><td class="rh">' + sk.nm + '</td>'
+       + row.map(function(v){
+           return '<td class="' + (v ? '' : 'z') + '">' + v + '</td>'; }).join('')
+       + '<td style="background:#16281d; color:var(--ink)">' + tot + '</td></tr>';
+  });
+  s += '<tr class="tot"><td class="rh">JUMLAH</td>'
+     + colTot.map(function(v){ return '<td>' + v + '</td>'; }).join('')
+     + '<td>' + PEOPLE.length + '</td></tr>';
+  el('prof').innerHTML = s + '</tbody></table>';
+}
+
+function renderPeranan(){
+  el('peranan').innerHTML = '<div class="track" style="height:22px; gap:2px">'
+    + PERANAN.map(function(r){
+        return '<div class="seg-f" style="width:' + r.pc + '%; background:'
+          + tok(r.col) + '; color:' + inkOn(tok(r.col)) + '">' + r.pc
+          + '%</div>'; }).join('')
+    + '</div>';
+  el('peranan-legend').innerHTML = PERANAN.map(function(r){
+    return '<span><i style="background:' + tok(r.col) + '"></i>' + r.nm
+      + '</span>'; }).join('');
+  el('peranan').querySelectorAll('.seg-f').forEach(function(sg, i){
+    const r = PERANAN[i];
+    hoverable(sg, '<b>' + r.nm + ' · ' + r.pc + '%</b><div style="margin-top:4px">'
+      + r.d.map(function(x){ return '• ' + x; }).join('<br>') + '</div>');
+  });
+  el('konsep').innerHTML = '<div style="font-size:10px; letter-spacing:.17em;'
+    + ' color:var(--ink3); margin-bottom:8px">KONSEP WASILAH</div>'
+    + KONSEP.map(function(k){
+        return '<div style="font-size:12.5px; color:var(--ink2);'
+          + ' padding:4px 0"><b style="color:var(--ink)">' + k.nm
+          + '</b> — ' + k.d + '</div>'; }).join('');
+}
+
+function renderHalaqah(){
+  el('hq-n').textContent = HQ.length + ' HALAQAH · ' + PEOPLE.length + ' MUTARABBI';
+  el('halaqah').innerHTML = '<div class="hqs">' + HQ.map(function(t){
+    const mem = membersOf(t), T = TAHAP[t];
+    const jauh = mem.filter(function(p){ return !p.sekolah.f2f; });
+    let s = '<div class="hq"><h3><b style="color:' + tok(T.col) + '">' + t
+          + '</b><span style="color:var(--ink3)">' + mem.length
+          + ' ORANG</span></h3>'
+          + '<div class="obj">' + T.nm + '</div>'
+          + '<div class="meta">' + T.umur.toUpperCase() + '</div>';
+    s += mem.map(function(p){
+      const gap = p.r - p.lvlHak;
+      return '<div class="mrow">' + bustCell(p)
+        + '<div><div class="nm">' + p.nm + '</div><div class="um">'
+        + p.umur + ' tahun · ' + p.band.form + ' · pangkat ' + p.r
+        + '</div></div>'
+        + '<div style="text-align:right">'
+        + '<span class="tag ' + (!p.sekolah.f2f ? 'jauh' : '') + '">'
+        + p.sekolah.short + '</span>'
+        + (gap ? '<br><span class="tag ' + (gap < 0 ? 'behind' : 'ahead')
+            + '" style="margin-top:3px; display:inline-block">'
+            + (gap < 0 ? '−' : '+') + Math.abs(gap) + ' PANGKAT</span>' : '')
+        + '</div></div>';
+    }).join('');
+    if (mem.length < 3) s += '<div class="note" style="margin-top:11px">'
+      + 'Hanya ' + mem.length + ' orang. Modul menyebut bilangan umur sebaya '
+      + 'mempengaruhi — halaqah sekecil ni susah nak hidup.</div>';
+    if (jauh.length) s += '<div class="note" style="margin-top:11px">'
+      + jauh.map(function(p){ return shortName(p.nm); }).join(', ')
+      + ' di <b>asrama jauh</b> — usrah mingguan tak mungkin. Modul '
+      + 'sendiri tinggalkan ini sebagai kerja terbuka: <i>“brainstorm apa '
+      + 'projek untuk asrama jauh”</i>.</div>';
+    return s + '</div>';
+  }).join('') + '</div>';
+}
+
+/* ---- F2F planner ---- */
+const SESI = [
+  {k:'usrah',  nm:'Usrah',    col:'--g3', ev:'mingguan'},
+  {k:'bulan',  nm:'Bulanan',  col:'--g4', ev:'sekali sebulan'},
+  {k:'tahun',  nm:'Tahunan',  col:'--g5', ev:'sekali setahun'},
+  {k:'indiv',  nm:'Muayasyah / taujihat', col:'--st-sapa', ev:'individu'}
+];
+/* the starting plan: weekly usrah for every halaqah, one monthly, and the
+   individual touches actually made */
+const PLAN = {};
+HQ.forEach(function(t){
+  PLAN[t] = [ {s:'usrah'}, {s:'usrah'}, {s:'bulan'}, {s:'usrah'} ];
+});
+/* Who, not how many. The first version counted touches and then guessed
+   the un-touched names from the reward clock, which is a different thing
+   entirely -- it would name someone who had been sat down with last week
+   just because nobody had taken them out. A murabbi acts on this list,
+   so it has to be the real one. */
+PLAN.indiv = [
+  {s:'indiv', who:['Ahmad Zulhilmi','Khairul Anwar']},
+  {s:'indiv', who:['Ridzwan Nasrullah']},
+  {s:'indiv', who:[]},
+  null
+];
+function touched(){
+  const set = {};
+  PLAN.indiv.forEach(function(c){
+    if (c && c.who) c.who.forEach(function(n){ set[n] = 1; });
+  });
+  return set;
+}
+
+function renderF2F(){
+  let s = '<div class="plan"><div></div>'
+        + [1,2,3,4].map(function(w){
+            return '<div class="ph">MINGGU ' + w + '</div>'; }).join('');
+  HQ.concat(['indiv']).forEach(function(row){
+    const lab = row === 'indiv' ? 'Individu' : 'Halaqah ' + row;
+    s += '<div class="rh">' + lab + '</div>';
+    for (let w = 0; w < 4; w++){
+      const c = PLAN[row][w];
+      const def = SESI.find(function(x){ return c && x.k === c.s; });
+      s += '<button class="slotb' + (c ? ' on' : '') + '" data-r="' + row
+         + '" data-w="' + w + '"'
+         + (c ? ' style="background:' + tok(def.col) + '; color:'
+                + inkOn(tok(def.col)) + '"' : '') + '>'
+         + (c ? '<small>' + def.nm.split(' ')[0].toUpperCase() + '</small>'
+                + (row === 'indiv' ? c.who.length + ' orang'
+                                   : membersOf(row).length + ' orang')
+              : '+')
+         + '</button>';
+    }
+  });
+  el('f2f').innerHTML = s + '</div>';
+  if (el('plan-tiles').children.length) renderPlanTiles();
+  el('f2f-legend').innerHTML = SESI.map(function(x){
+    return '<span><i style="background:' + tok(x.col) + '"></i>' + x.nm
+      + ' <span style="color:var(--ink3)">· ' + x.ev + '</span></span>';
+  }).join('');
+
+  el('f2f').querySelectorAll('.slotb').forEach(function(b){
+    b.addEventListener('click', function(){
+      const r = b.dataset.r, w = +b.dataset.w;
+      if (r === 'indiv'){
+        PLAN[r][w] = PLAN[r][w] ? null : {s:'indiv', who:[]};
+      } else {
+        /* cycle through the module's three group tiers, then off -- a
+           legend entry for a mark you cannot place is a lie */
+        const cyc = ['usrah','bulan','tahun'];
+        const cur = PLAN[r][w] ? cyc.indexOf(PLAN[r][w].s) : -1;
+        PLAN[r][w] = cur + 1 < cyc.length ? {s:cyc[cur + 1]} : null;
+      }
+      renderF2F();
+      const c = PLAN[r][w];
+      toast(c ? SESI.find(function(x){ return x.k === c.s; }).nm + ' ditanda.'
+              : 'Sesi dibuang.');
+    });
+  });
+  renderSentuh();
+}
+
+/* The module's first stated murobbi problem is "sentuhan kurang
+   (muayasyah, taujihat)". So the planner counts touches, not sessions. */
+function renderSentuh(){
+  const set = touched();
+  const belum = PEOPLE.filter(function(p){ return !set[p.nm]; });
+  const done = PEOPLE.length - belum.length;
+  el('sentuh').innerHTML =
+    '<div style="margin-top:16px; padding-top:15px; border-top:1px solid var(--line)">'
+    + '<div style="font-size:10px; letter-spacing:.17em; color:var(--ink3)">'
+    + 'SENTUHAN INDIVIDU · 4 MINGGU</div>'
+    + '<div style="display:flex; align-items:baseline; gap:9px; margin:7px 0 4px">'
+    + '<span style="font-size:30px; font-weight:700; font-family:ui-monospace,'
+    + 'Menlo,monospace; color:' + (done >= PEOPLE.length ? tok('--st-naik')
+        : tok('--st-sapa')) + '">' + done + '</span>'
+    + '<span style="font-size:13px; color:var(--ink3)">daripada '
+    + PEOPLE.length + ' mutarabbi</span></div>'
+    + (belum.length
+        ? '<div class="note">Belum disentuh secara individu: <b>'
+          + belum.map(function(p){ return shortName(p.nm); }).join(', ')
+          + '</b>. Modul letak ini sebagai masalah murobbi yang pertama — '
+          + '<i>“sentuhan kurang (muayasyah, taujihat)”</i> — bukan masalah '
+          + 'mutarabbi.</div>'
+        : '<div class="note">Semua dapat sentuhan individu bulan ni.</div>')
+    + '</div>';
+}
+
+/* ---- rewards ---- */
+const HADIAH = [
+  {t:'02', nm:'Kelab Berkuda Al-Heyzum', w:'Aktiviti rare · RM 65/sesi'},
+  {t:'02', nm:'Institut Latihan Menembak Jugra Perkasa', w:'Aktiviti rare · RM 95/sesi'},
+  {t:'01', nm:'Explorace masjid bersejarah', w:'Amali 01 · kos rendah'},
+  {t:'01', nm:'Kolam KRIM Bangi', w:'Sunnah · RM 5/masuk'},
+  {t:'02', nm:'Akademi Memanah Al-Fateh', w:'Sunnah · RM 35/sesi'},
+  {t:'03', nm:'Ziarah qudama & pimpinan agensi', w:'Amali 02 · kos transport'},
+  {t:'01', nm:'Belanja makan lepas usrah', w:'Beli hati · mingguan'}
+];
+function renderHadiah(){
+  /* The module puts the spending at F1-F2 -- "create moment, beli hati,
+     banyak belanja" -- which is tahap 02. So the weighting is not a
+     preference; it is the module's own prescription. */
+  const w = {'01':25, '02':55, '03':20};
+  let s = '<div style="font-size:10px; letter-spacing:.17em; color:var(--ink3)">'
+        + 'BERAT BELANJA MENGIKUT TAHAP</div>'
+        + '<div class="track" style="height:20px; gap:2px; margin:9px 0 9px">'
+        + HQ.map(function(t){
+            return '<div class="seg-f" style="width:' + w[t] + '%; background:'
+              + tok(TAHAP[t].col) + '; color:' + inkOn(tok(TAHAP[t].col)) + '">'
+              + t + ' · ' + w[t] + '%</div>'; }).join('')
+        + '</div>'
+        + '<div class="note" style="margin:0 0 15px">Modul letak belanja '
+        + 'paling berat pada <b>F1–F2</b> (tahap 02): <i>“create moment, '
+        + 'beli hati, banyak belanja”</i>. Pada tahap tu anak-anak '
+        + '<i>“akan terima apa yang kita isi”</i> — jadi belanja tu bukan '
+        + 'upah, ia wasilah.</div>';
+
+  s += '<div class="rw">' + HADIAH.map(function(h){
+    return '<div class="rwi"><span class="t" style="background:'
+      + tok(TAHAP[h.t].col) + '">' + h.t + '</span>'
+      + '<div><div class="n">' + h.nm + '</div><div class="w">' + h.w
+      + '</div></div></div>';
+  }).join('') + '</div>';
+
+  const lama = PEOPLE.slice().sort(function(a, b){ return b.riang - a.riang; })
+    .slice(0, 3);
+  s += '<div style="margin-top:16px; padding-top:15px; border-top:1px solid var(--line)">'
+     + '<div style="font-size:10px; letter-spacing:.17em; color:var(--ink3)">'
+     + 'PALING LAMA TAK DIGEMBIRAKAN</div>'
+     + lama.map(function(p){
+         return '<div style="display:flex; justify-content:space-between;'
+           + ' font-size:12.5px; padding:6px 0; border-bottom:1px solid var(--line)">'
+           + '<span>' + p.nm + ' <span style="color:var(--ink3)">· tahap '
+           + p.tahap + '</span></span><b style="font-family:ui-monospace,'
+           + 'Menlo,monospace; color:' + (p.riang > 60 ? tok('--st-sapa')
+               : 'var(--ink2)') + '">' + p.riang + ' hari</b></div>';
+       }).join('')
+     + '</div>';
+  el('hadiah').innerHTML = s;
+}
+
+/* ---- content library ---- */
+let KTAB = '01';
+function renderKonten(){
+  const rows = KONTEN[KTAB];
+  const nt = rows.reduce(function(a, r){ return a + r.teori.length; }, 0);
+  const na = rows.reduce(function(a, r){ return a + r.amali.length; }, 0);
+  el('kon-n').textContent = rows.length + ' OBJEKTIF · ' + nt + ' TEORI · '
+    + na + ' AMALI';
+
+  let s = '';
+  if (KTAB === '03'){
+    s += '<div class="gap" style="margin-bottom:14px">'
+      + '<b>Wasilah untuk 03 belum ada.</b> Modul menyenaraikan objektif '
+      + '03, tetapi jadual teori/amali dalam dokumen berhenti di '
+      + 'pertengahan 02 — ayat terakhirnya terpotong. Jadi tiga objektif '
+      + 'di bawah ni tiada bahan. Saya tak reka; kalau ada sambungan '
+      + 'dokumen tu, hantar dan saya isikan.</div>';
+  }
+  s += '<div class="kon">' + rows.map(function(r){
+    let k = '<div class="ko"><h4>' + r.ob + '</h4>';
+    if (r.pn) k += '<p class="pn">' + r.pn + '</p>';
+    if (r.teori.length){
+      k += '<div class="grp">TEORI</div><ol>'
+        + r.teori.map(function(x){ return '<li>' + x + '</li>'; }).join('')
+        + '</ol>';
+    }
+    if (r.amali.length){
+      k += '<div class="grp">AMALI</div><ol class="amali">'
+        + r.amali.map(function(x){ return '<li>' + x + '</li>'; }).join('')
+        + '</ol>';
+    }
+    if (r.trunc) k += '<div class="note" style="margin-top:12px">Amali '
+      + 'untuk objektif ni tiada — dokumen terpotong di sini.</div>';
+    if (r.gap) k += '<div class="note" style="margin-top:12px">Tiada teori '
+      + 'atau amali dalam dokumen.</div>';
+    return k + '</div>';
+  }).join('') + '</div>';
+  el('konten').innerHTML = s;
+}
+el('kon-tab').addEventListener('click', function(e){
+  const b = e.target.closest('button'); if (!b) return;
+  KTAB = b.dataset.t;
+  el('kon-tab').querySelectorAll('button').forEach(function(x){
+    x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+  renderKonten(); applyFit();
+});
+
+function renderPlanTiles(){
+  const jauh = PEOPLE.filter(function(p){ return !p.sekolah.f2f; }).length;
+  const behind = PEOPLE.filter(function(p){ return p.r < p.lvlHak; }).length;
+  const done = PEOPLE.filter(function(p){ return touched()[p.nm]; }).length;
+  const noWasilah = KONTEN['03'].length;
+  el('plan-tiles').innerHTML = [
+    ['SENTUHAN INDIVIDU', done + '/' + PEOPLE.length, 'dalam 4 minggu',
+     done >= PEOPLE.length ? tok('--st-naik') : tok('--st-sapa')],
+    ['DI BAWAH ARAS UMUR', behind, 'pangkat < aras umur', tok('--st-sapa')],
+    ['ASRAMA JAUH', jauh, 'usrah mingguan tak mungkin', tok('--st-senyap')],
+    ['OBJEKTIF 03 TANPA BAHAN', noWasilah, 'jadual modul terpotong', tok('--st-sapa')]
+  ].map(function(t){
+    return '<div class="tile"><div class="bar" style="background:' + t[3]
+      + '"></div><div class="k">' + t[0] + '</div><div class="v">' + t[1]
+      + '</div><div class="d">' + t[2] + '</div></div>';
+  }).join('');
+}
+
+/* ---- page switch ---- */
+let PAGE = 'pantau';
+el('pages').addEventListener('click', function(e){
+  const b = e.target.closest('button'); if (!b) return;
+  PAGE = b.dataset.pg;
+  el('pages').querySelectorAll('button').forEach(function(x){
+    x.setAttribute('aria-current', x === b ? 'true' : 'false'); });
+  el('pg-pantau').hidden = PAGE !== 'pantau';
+  el('pg-plan').hidden = PAGE !== 'plan';
+  if (PAGE === 'plan' && !el('prof').innerHTML){
+    renderProfiling(); renderPeranan(); renderHalaqah();
+    renderF2F(); renderHadiah(); renderKonten(); renderPlanTiles();
+  }
+  applyFit();
+});
 
 let current = TRIAGE[0] || PEOPLE[0];
 
@@ -1927,7 +2611,7 @@ el('tj-add').addEventListener('click', function(){
   el('tj-in').value = '';
   renderTaujihat();
   el('tj-n').textContent = current.taujihat.length + ' CATATAN';
-  toast('Taujihat disimpan untuk ' + current.nm.split(' ')[0] + '.');
+  toast('Taujihat disimpan untuk ' + shortName(current.nm) + '.');
 });
 el('tj-in').addEventListener('keydown', function(e){
   if (e.key === 'Enter') el('tj-add').click();

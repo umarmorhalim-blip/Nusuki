@@ -340,6 +340,68 @@ Single-series charts get no legend box — the card title names the series — a
 only the last point is direct-labelled. Both line charts carry a crosshair and a
 per-week tooltip; heatmap cells and bar rows carry their own.
 
+### The Perancangan page
+
+`Pantau` answers *who needs me today*. `Perancangan` answers *so what am I
+actually going to do*, and every number on it is transcribed from **MODUL
+TARBIAH BANGSAWAN ZON A** — the age bands, the three objective tiers, all 34
+teori and amali, the 40/40/10/10 role split. A planner that invents its own
+curriculum is worse than no planner, so where the module stops, the page says
+so instead of filling the hole.
+
+**The age → level → tier mapping lines up exactly with the module's own school
+bands**, which is why it can be trusted:
+
+| Umur | Tingkatan | Band (modul) | Level | Tahap |
+|---|---|---|---|---|
+| 12 | Tahun 6 | PRA MEN | 1 | **01** kesedaran nak jadi baik |
+| 13–14 | F1–F2 | MR | 2–3 | **02** sedar realiti dan ingin ubah realiti |
+| 15 | F3 | MT | 4 | **03** memacu usaha dakwah dan tarbiah remaja |
+| 16–17 | F4–F5 | MA | 5 | **03** |
+
+**The one design decision that was mine, stated plainly:** tahap comes from
+*age* and pangkat comes from *amal*. The module says the tiers exist to give
+children their right "mengikut tahap perkembangan masing-masing" — a right, not
+an achievement — while Nusuki's ranks are earned. So they are two different
+axes, and the gap between them is information: a 15-year-old still at pangkat 2
+shows as `−2 PANGKAT`. Four of the twelve are behind their age level. If the
+intent was that level *is* the rank, this page needs rewiring.
+
+Four sections, each answering a problem the module itself names:
+
+- **Profiling** reproduces the module's own matrix (school type × age band)
+  because that is the Fasa 1 output that decides the halaqah split — "susun
+  group anak-anak mengikut pecahan umur, bagi meraikan tabiat psikologi".
+- **Set halaqah** groups the twelve into three halaqah by tahap, flags anyone
+  behind or ahead of their age level, and flags the boarders. That last one
+  turned out to matter: **Firdaus, the most urgent name on the Pantau page for
+  six days of silence, is at asrama jauh.** So is Irfan, whose Nur Amanah
+  dropped nine points. Their silence may be distance, not disengagement —
+  exactly the challenge the module lists second, and one it leaves open
+  ("brainstorm apa projek untuk asrama jauh").
+- **Sesi F2F** is a four-week planner over the module's three group tiers, plus
+  one row for individual muayasyah. It counts **touches, not sessions**, because
+  the module's very first stated murobbi problem is "sentuhan kurang". Clicking
+  a cell cycles usrah → bulanan → tahunan → off, so every legend entry is a mark
+  that can actually be placed.
+- **Gembirakan anak buah** is weighted 55% toward tahap 02 — not a preference,
+  the module's own prescription for F1–F2: "create moment, beli hati, banyak
+  belanja", at the age where a child "akan terima apa yang kita isi". Which is
+  also why the existing recreation venues belong here: Berkuda Al-Heyzum and
+  Menembak Jugra *are* the module's "aktiviti seronok dan rare".
+
+**What the source document does not contain:** the wasilah table stops partway
+through 02 — the file ends mid-sentence at "Majmuat Rasail (risalah". So tahap
+**03 has its three objectives and no teori or amali at all**, and one objective
+in 02 has teori but no amali. Both are shown as gaps, with a stat tile counting
+them. Nothing was invented to cover it.
+
+One bug worth recording from this page: the individual-touch list first *counted*
+touches and then guessed the un-touched names from the reward clock. Those are
+different things — it would have named someone sat down with last week just
+because nobody had taken them out. A murabbi acts on that list, so it now
+records who.
+
 ### On a phone you get the whole board, not a column
 
 The first build reflowed into a single column below 1080px, and it stopped
@@ -391,6 +453,22 @@ Two fixes, and the second matters more than the first:
 
 A dependency for one decorative element must never be able to blank the thing a
 mentor came to read. That is worth more than the avatar.
+
+### Framing the avatar
+
+The figure was cropped at the feet. The camera had hand-tuned distances scaled
+by the rank's own `scale`, derived for one rank at one slot aspect — every other
+combination missed. It now fits a measured `Box3`, with two refinements:
+
+- **One box for all five ranks**, unioned while the busts are baked. Fitting each
+  figure to its own bounds stops the cropping but also flattens the height
+  progression: an Adiguru fitted to the slot looks exactly as tall as an Anak
+  Dagang, and height is one of the things the ranks say. Shared box, shared
+  ground line — rank 1 reads short, rank 5 fills the slot, nothing crops.
+- **The width term is under-weighted (×0.82)**, because a drawn keris widens the
+  box by a third and taking that at face value shrank ranks 4 and 5 to
+  two-thirds the size of rank 1. A blade tip running close to the edge is the
+  better trade.
 
 ### Reuse and cost
 
