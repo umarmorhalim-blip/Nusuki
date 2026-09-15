@@ -1,5 +1,62 @@
 # Cyber-Voxel Nusantara — Voxel Rank Renderer
 
+> **Product name: MirVA.** The repository, the file paths and the git history
+> keep the old name — renaming those is not mine to do — but every string a
+> user sees now reads `MirVA`, in that exact casing (Mir + VA). No rule
+> uppercases it, so the markup carries the casing directly.
+
+## Bought items on the avatar
+
+Buying used to flip `OWNED[id] = true` and change nothing. That is a receipt,
+not a reward, so equipment now renders on the figure.
+
+**This is the point where the shop could quietly break the app's own promise**
+— the Avatar screen says *"AVATAR MENCERMINKAN AMALANMU YANG SEBENAR"*, and a
+thing that appears because you paid is a lie against that line.
+
+What rescues it is the gate. Every non-`asas` item is locked behind a real
+activity, so a keris latihan on the figure means *he passed silat* and a quiver
+means *four archery sessions*. The item is not a purchase showing off; it is a
+second and truer report of what he has done. Which is exactly why the `asas`
+tier holds nothing rare — a kopiah and a tasbih say nothing, and they are not
+meant to.
+
+Seven slots, one item each: `kepala`, `muka`, `telinga`, `pinggang`, `tangan`,
+`belakang`, `kaki`. **`tangan` is the LEFT hand on purpose** — ranks 4 and 5
+already hold a neon keris in the right, and two blades in two hands is a
+different character. So the keris latihan, the bow, the sejadah, the Quran and
+the tasbih all compete for one hand, which is true to life and explains the
+constraint without a word of UI.
+
+**Where rank and purchase collide, the rank wins on the head.** The songkok and
+the tanijak are the rank's own signal, so bought headgear only shows on ranks
+1–2, which have none of their own. The worn-items panel says
+*"ditutup pangkat"* rather than naming an item that is not on the figure —
+a panel that disagrees with the thing you are looking at is worse than no panel.
+
+### Three placement bugs, all the same bug
+
+Every one came from forgetting that this figure is only ever seen from **one
+camera**, standing at `x:+10`:
+
+- **The quiver** first sat at `x:-4.6` — exactly where the left upper arm is
+  (`-6.1` to `-3.4`), so the arm hid all of it. Moving it further out was not
+  enough either: the camera's offset means the figure's *left* side is the one
+  turned away and compressed, and the arrows collapsed into slivers against the
+  neck. It now rides the **right** shoulder, the side facing the camera.
+- **The bow** was slung across the back, where the torso hid it. A bow on the
+  back of a figure only ever viewed from the front is the one thing you paid
+  1,600 XP *not* to see, so it moved to the hand — which is also how a bow is
+  carried.
+- **The hand items** (sejadah, Quran, tasbih) were tucked against the body and
+  read as slivers. Pushed out and forward, and scaled up.
+
+A method note: I tried to measure visibility by pixel-diffing each item against
+the bare figure, and every item scored the same ~50k changed pixels — because
+the diff was measuring the idle bob, not the equipment. The measurement was
+useless and the zoomed crop was what actually settled it.
+
+
 An interactive 3D voxel character renderer in a single HTML file. Five ranked
 characters wearing traditional Malay attire — baju melayu, sarung/samping,
 songkok and tanijak — rendered Minecraft-style from `THREE.BoxGeometry`

@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nusuki Adab App</title>
+<title>MirVA Adab App</title>
 <style>
 /* =====================================================================
-   NUSUKI — app mockup, skinned to the voxel engine
+   MirVA — app mockup, skinned to the voxel engine
    Same design tokens as index.html, and the same voxel characters: one
    WebGL canvas floats over the whole UI with an alpha clear, and the 3D
    is drawn only inside scissor rectangles aligned to DOM slots. That is
@@ -328,6 +328,20 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
   white-space:nowrap}
 .item .gate{font-size:9.5px; letter-spacing:.09em; color:var(--gold);
   line-height:1.6; text-align:right; max-width:124px}
+.item .wear{font-size:10px; letter-spacing:.14em; background:none;
+  border:1px solid rgba(57,255,106,.4); border-radius:9px; color:#9fd9b3;
+  padding:9px 11px; cursor:pointer; white-space:nowrap; font-family:inherit}
+.item .wear:hover{border-color:var(--neon); color:#eafff0}
+.item .wear.on{background:var(--neon); border-color:var(--neon); color:#04120a;
+  font-weight:700}
+.pkr{display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:7px 0; border-bottom:1px solid var(--line-dim)}
+.pkr:last-child{border-bottom:0}
+.pk-s{font-size:9px; letter-spacing:.16em; color:var(--text-muted)}
+.pk-i{display:flex; align-items:center; gap:7px; font-size:11.5px;
+  color:#dcffe6}
+.pk-e{font-size:10px; letter-spacing:.1em; color:var(--text-muted);
+  opacity:.65}
 .rare{font-size:8.5px; letter-spacing:.14em; color:var(--gold);
   border:1px solid rgba(240,192,42,.4); border-radius:4px; padding:1px 4px;
   margin-left:6px; vertical-align:1px}
@@ -342,7 +356,7 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
 <div class="phone">
   <div class="sbar">
     <span>9:41</span>
-    <span class="brand">NUSUKI</span>
+    <span class="brand">MirVA</span>
     <span class="sp"></span>
     <span class="live"><b>●</b> LIVE</span>
   </div>
@@ -406,6 +420,13 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
         <div class="stat"><div class="sl">STREAK AKTIF</div><div class="sv">14<u>hari</u></div></div>
         <div class="stat"><div class="sl">LANGKAH HARI INI</div><div class="sv">2.3<u>k</u></div></div>
         <div class="stat"><div class="sl">XP TERKUMPUL</div><div class="sv" id="a-xp">680</div></div>
+      </div>
+
+      <div class="card">
+        <h2 class="k" style="margin-bottom:3px">DIPAKAI</h2>
+        <p class="k" style="color:var(--text-muted); margin:0 0 11px;
+           line-height:1.6">BARANG DARI KEDAI YANG MUNCUL PADA AVATAR</p>
+        <div id="pakai"></div>
       </div>
 
       <div class="card">
@@ -1006,6 +1027,179 @@ function buildChar(cfg){
     right.add(p);
   }
 
+  /* =====================================================================
+     Bought equipment.
+
+     This is where the shop pays off -- and where it could quietly break
+     the app's own promise, "AVATAR MENCERMINKAN AMALANMU YANG SEBENAR".
+     A thing that appears because you paid is a lie against that line.
+
+     What rescues it is the gate: every non-asas item is locked behind a
+     real activity, so a keris latihan on the figure means he passed
+     silat, and a quiver means four archery sessions. The item is not a
+     purchase showing off, it is a second and truer report of what he has
+     done. That is exactly why the `asas` tier holds nothing rare -- a
+     kopiah and a tasbih say nothing, and they are not meant to.
+
+     One rule where rank and purchase collide: the RANK WINS on the head.
+     The songkok and the tanijak are the rank's own signal and a bought
+     kopiah must not overwrite it, so headgear only shows on ranks 1-2,
+     which have none of their own.
+     ===================================================================== */
+  const eq = cfg.equip || {};
+  const left = arms[0];
+  const bareHead = cfg.headwear === 'none';
+
+  if (bareHead && eq.kepala === 'kopiah'){
+    const kain = mat(0xf2efe6);
+    box(g, {w:hW - 0.7, h:2.3, d:hD - 0.7, y:hY + hH/2 + 0.95, material:kain});
+    box(g, {w:hW - 1.9, h:0.5, d:hD - 1.9, y:hY + hH/2 + 2.3, material:kain});
+  }
+  if (bareHead && eq.kepala === 'topikuda'){
+    const shell = mat(0x22282b), strap = mat(0x14181a);
+    box(g, {w:hW + 0.5, h:3.0, d:hD + 0.5, y:hY + hH/2 + 1.0, material:shell});
+    box(g, {w:hW - 1.2, h:0.6, d:hD - 1.2, y:hY + hH/2 + 2.7, material:shell});
+    /* the peak: a thin slab pushed forward over the brow */
+    box(g, {w:hW - 0.6, h:0.55, d:2.1, y:hY + hH/2 - 0.35, z:hD/2 + 1.0, material:shell});
+    box(g, {w:hW + 0.6, h:0.7, d:hD + 0.6, y:hY + hH/2 - 0.5, material:strap});
+  }
+
+  /* pushed up onto the forehead, so the painted face stays readable */
+  if (eq.muka === 'goggle'){
+    const band = mat(0x1c2a33), lens = mat(0x5fd0e0, {shine:'hard'});
+    box(head, {w:hW + 0.3, h:1.0, d:hD + 0.3, y:hH/2 - 1.5, material:band});
+    [-1, 1].forEach(function(q){
+      box(head, {w:2.1, h:1.7, d:0.6, x:q * 1.6, y:hH/2 - 1.5,
+                 z:hD/2 + 0.32, material:lens});
+    });
+  }
+
+  if (eq.telinga === 'telinga'){
+    const cup = mat(0x2b3138), pad = mat(0xd8d2c4);
+    box(head, {w:hW + 0.5, h:0.8, d:2.0, y:hH/2 + 0.25, material:cup});
+    [-1, 1].forEach(function(q){
+      box(head, {w:1.0, h:3.2, d:3.0, x:q * (hW/2 + 0.55), y:-0.4, material:cup});
+      box(head, {w:0.4, h:2.4, d:2.2, x:q * (hW/2 + 0.15), y:-0.4, material:pad});
+    });
+  }
+
+  if (eq.pinggang === 'samping'){
+    /* sits over whatever the rank wears below, a little wider, with the
+       fold knotted at the front */
+    const kain = mat(0x7a2f3a), tepi = mat(0xd9b64a);
+    const sy = P.pelvisY - 1.4;
+    box(g, {w:P.pelvisW + PAD + 1.5, h:4.6, d:P.pelvisD + PAD + 1.5, y:sy, material:kain});
+    box(g, {w:P.pelvisW + PAD + 1.6, h:0.4, d:P.pelvisD + PAD + 1.6, y:sy - 2.1, material:tepi});
+    box(g, {w:2.6, h:3.2, d:0.8, x:-1.4, y:sy - 1.2,
+            z:(P.pelvisD + PAD + 1.5)/2 + 0.3, rz:0.2, material:kain});
+  }
+
+  if (eq.kaki === 'kasut'){
+    const upper = mat(0xe8e4d8), sole = mat(0x2c3a33), mark = mat(0x39a05a);
+    [-1, 1].forEach(function(q){
+      const x = q * P.legX;
+      box(g, {w:P.footW + 0.5, h:2.0, d:P.footD + 0.4, x:x, y:1.55, z:P.footZ, material:upper});
+      box(g, {w:P.footW + 0.7, h:0.8, d:P.footD + 0.6, x:x, y:0.45, z:P.footZ, material:sole});
+      box(g, {w:0.5, h:1.2, d:2.6, x:x + q * (P.footW/2 + 0.1), y:1.6,
+              z:P.footZ + 0.3, material:mark});
+    });
+  }
+
+  if (eq.belakang === 'sarung'){
+    /* Slung so it CLEARS the silhouette. The first version sat squarely
+       behind the torso at the same x, where the torso hid all of it from
+       the front -- the only camera the app ever uses. It now rides off
+       the left hip with the fletching above the shoulder, so the thing
+       you paid four swimming-pool sessions' worth of archery for is
+       actually visible. */
+    /* Two goes at this. First it sat at x = -4.6, exactly where the left
+       upper arm is (-6.1 to -3.4), so the arm hid all of it. Moving it
+       further out was not enough either: the slot camera stands at x =
+       +10, so the figure's LEFT side is the one turned away and squashed,
+       and the arrows collapsed into slivers against the neck.
+
+       So it rides the right shoulder, which is the side facing the
+       camera. Nothing competes there -- the bought hand items are all in
+       the left hand, and the rank keris is held, not slung. */
+    const tube = mat(0x6b4a2a), rim = mat(0x3f2b17);
+    const zB = -(P.torsoD/2 + 0.6);
+    box(g, {w:2.8, h:10.0, d:2.8, x:6.0, y:P.torsoY - 1.2, z:zB, rz:0.26, material:tube});
+    box(g, {w:3.1, h:0.7, d:3.1, x:4.8, y:P.torsoY + 3.4, z:zB, rz:0.26, material:rim});
+    [-0.9, 0, 0.9].forEach(function(o, i){
+      box(g, {w:0.55, h:6.0, d:0.55, x:5.0 + o * 1.05, y:P.torsoY + 6.8,
+              z:zB + o * 0.8, rz:0.26, material:mat(0xd8cdb4)});
+      box(g, {w:1.0, h:1.7, d:0.38, x:4.2 + o * 1.05, y:P.torsoY + 9.4,
+              z:zB + o * 0.8, rz:0.26, material:mat(i === 1 ? 0xc44a3a : 0x2f6b3a)});
+    });
+  }
+
+
+  if (eq.tangan === 'busur'){
+    /* Held, not slung. The limb is an arc approximated by seven short
+       boxes tilted along it; the string is one thin box across the chord.
+       Slung on the back it was invisible from the only camera the app
+       has -- the front one. */
+    const kayu = mat(0x7a5322), tali = mat(0xe6e0cf), grip = mat(0x3f2b17);
+    const bw = new THREE.Group();
+    bw.position.set(-2.6, P.handY - P.shoulderY + 1.0, 2.4);
+    bw.rotation.z = 0.20; bw.rotation.y = -0.34;
+    left.add(bw);
+    for (let i = 0; i < 7; i++){
+      const t = (i - 3) / 3;                       // -1 .. 1
+      box(bw, {w:1.0, h:3.1, d:1.0, x:Math.abs(t) * 2.4 - 1.2, y:t * 8.4,
+               rz:-t * 0.36, material:kayu});
+    }
+    box(bw, {w:1.3, h:3.0, d:1.3, x:-1.2, material:grip});
+    box(bw, {w:0.32, h:17.2, d:0.32, x:-1.45, material:tali});
+  }
+  if (eq.tangan === 'kerissilat'){
+    /* the same silhouette as the rank keris, in wood and steel instead of
+       neon -- this one is a training blade, and it should not glow */
+    const p = new THREE.Group();
+    p.position.set(-1.8, P.handY - P.shoulderY + 0.4, 2.3);
+    p.rotation.z = 0.24; p.rotation.x = -0.14;
+    const steel = mat(0x9aa4a8, {shine:'hard'});
+    box(p, {w:1.5, h:3.3, d:1.5, y:-1.9, rz:-0.2, material:mat(0x5a3a1e)});
+    box(p, {w:4.2, h:1.0, d:2.2, y:0.5, material:mat(0x6b4a2a)});
+    for (let i = 0; i < 8; i++){
+      const t = i/7, w = 2.0 - t*1.45, x = Math.sin(i*0.85)*0.3,
+            y = 1.7 + i*1.3, rz = Math.sin(i*0.85)*0.07;
+      box(p, {w:w, h:1.5, d:0.7 - t*0.28, x:x, y:y, rz:rz, material:steel});
+    }
+    left.add(p);
+  }
+  if (eq.tangan === 'sejadah'){
+    const p = new THREE.Group();
+    p.position.set(-2.4, P.handY - P.shoulderY + 1.4, 2.6);
+    p.rotation.x = 0.16; p.rotation.y = 0.5;
+    box(p, {w:3.0, h:3.0, d:8.6, material:mat(0x2e5c47)});
+    box(p, {w:3.1, h:3.1, d:0.8, z:4.3, material:mat(0xd9b64a)});
+    box(p, {w:3.1, h:3.1, d:0.8, z:-4.3, material:mat(0xd9b64a)});
+    left.add(p);
+  }
+  if (eq.tangan === 'quran'){
+    const p = new THREE.Group();
+    p.position.set(-2.6, P.handY - P.shoulderY + 1.3, 3.0);
+    p.rotation.x = -0.3; p.rotation.z = 0.12;
+    box(p, {w:5.4, h:1.5, d:6.8, material:mat(0x123a2a)});
+    box(p, {w:4.9, h:0.6, d:6.3, y:0.9, material:mat(0xefe8d4)});
+    box(p, {w:1.0, h:0.4, d:6.0, x:1.7, y:1.2, material:mat(0xd9b64a)});
+    left.add(p);
+  }
+  if (eq.tangan === 'tasbih'){
+    const p = new THREE.Group();
+    p.position.set(-2.3, P.handY - P.shoulderY - 1.4, 2.4);
+    left.add(p);
+    const bead = mat(0x6b4a2a);
+    /* a hanging loop: eleven beads down one side and up the other */
+    for (let i = 0; i < 11; i++){
+      const a = Math.PI * i / 10;
+      box(p, {w:0.78, h:0.78, d:0.78, x:Math.cos(a) * 1.5,
+              y:-Math.sin(a) * 3.2, material:bead});
+    }
+    box(p, {w:0.62, h:1.9, d:0.62, y:-4.1, material:mat(0x3f2b17)});
+  }
+
   g.userData.pulse = pulse;
   g.userData.arms = arms;
   g.userData.head = head;
@@ -1338,23 +1532,41 @@ const AKTIVITI = {
 };
 const LULUS = {asas:'Latihan asas', mahir:'Mahir', tauliah:'Bertauliah'};
 
+/* Where a bought thing sits on the figure. One item per slot, and a
+   second equip in the same slot swaps the first out.
+
+   `tangan` is the LEFT hand on purpose: ranks 4 and 5 already hold a
+   neon keris in the right, and two blades in two hands is a different
+   character. So the keris latihan, the sejadah, the Quran and the tasbih
+   all compete for the same hand -- which is true to life, and explains
+   the constraint without a word of UI. */
+const SLOTS_PAKAI = [
+  {k:'kepala',   nm:'Kepala'},
+  {k:'muka',     nm:'Muka'},
+  {k:'telinga',  nm:'Telinga'},
+  {k:'pinggang', nm:'Pinggang'},
+  {k:'tangan',   nm:'Tangan kiri'},
+  {k:'belakang', nm:'Belakang'},
+  {k:'kaki',     nm:'Kaki'}
+];
+
 const KEDAI = [
   /* --- asas: no gate, and nothing rare lives here --- */
-  {id:'kopiah',  nm:'Kopiah Putih',        kat:'asas', ic:'bulan',  xp:120, g:null},
-  {id:'sejadah', nm:'Sejadah Lipat',       kat:'asas', ic:'masjid', xp:180, g:null},
-  {id:'tasbih',  nm:'Tasbih Kayu',         kat:'asas', ic:'tasbih', xp:150, g:null},
-  {id:'botol',   nm:'Botol Air Nusuki',    kat:'asas', ic:'bola',   xp:90,  g:null},
-  {id:'quran',   nm:'Al-Quran Saku',       kat:'asas', ic:'kitab',  xp:240, g:null},
+  {id:'kopiah',  nm:'Kopiah Putih',        kat:'asas', ic:'bulan',  xp:120, g:null, sl:'kepala'},
+  {id:'sejadah', nm:'Sejadah Lipat',       kat:'asas', ic:'masjid', xp:180, g:null, sl:'tangan'},
+  {id:'tasbih',  nm:'Tasbih Kayu',         kat:'asas', ic:'tasbih', xp:150, g:null, sl:'tangan'},
+  {id:'botol',   nm:'Botol Air MirVA'   ,    kat:'asas', ic:'bola',   xp:90,  g:null},
+  {id:'quran',   nm:'Al-Quran Saku',       kat:'asas', ic:'kitab',  xp:240, g:null, sl:'tangan'},
 
   /* --- renang --- */
   {id:'goggle',  nm:'Goggle Renang',       kat:'renang', ic:'renang', xp:260,
-   g:{t:'kira', act:'renang', need:3}},
+   g:{t:'kira', act:'renang', need:3}, sl:'muka'},
   {id:'fin',     nm:'Fin Latihan',         kat:'renang', ic:'renang', xp:420,
    g:{t:'kira', act:'renang', need:8}},
 
   /* --- kuda: the module's own example -- basic training first --- */
   {id:'topikuda',nm:'Topi Keledar Berkuda',kat:'kuda', ic:'kuda', xp:340,
-   g:{t:'lulus', act:'kuda', lvl:'asas'}},
+   g:{t:'lulus', act:'kuda', lvl:'asas'}, sl:'kepala'},
   {id:'pelana',  nm:'Pelana & Tali',       kat:'kuda', ic:'kuda', xp:880,
    g:{t:'lulus', act:'kuda', lvl:'mahir'}},
   {id:'kuda1',   nm:'Kuda Sendiri',        kat:'kuda', ic:'kuda', xp:4200,
@@ -1362,23 +1574,49 @@ const KEDAI = [
 
   /* --- silat --- */
   {id:'samping', nm:'Samping Silat',       kat:'silat', ic:'wajik', xp:300,
-   g:{t:'kira', act:'silat', need:8}},
+   g:{t:'kira', act:'silat', need:8}, sl:'pinggang'},
   {id:'kerissilat',nm:'Keris Latihan',     kat:'silat', ic:'silat', xp:1100,
-   g:{t:'lulus', act:'silat', lvl:'asas'}, rare:true},
+   g:{t:'lulus', act:'silat', lvl:'asas'}, rare:true, sl:'tangan'},
 
   /* --- panah / tembak --- */
   {id:'sarung',  nm:'Sarung Anak Panah',   kat:'panah', ic:'panah', xp:280,
-   g:{t:'kira', act:'panah', need:4}},
+   g:{t:'kira', act:'panah', need:4}, sl:'belakang'},
   {id:'busur',   nm:'Busur Sendiri',       kat:'panah', ic:'panah', xp:1600,
-   g:{t:'lulus', act:'panah', lvl:'mahir'}, rare:true},
+   g:{t:'lulus', act:'panah', lvl:'mahir'}, rare:true, sl:'tangan'},
   {id:'telinga', nm:'Pelindung Telinga',   kat:'tembak', ic:'tembak', xp:220,
-   g:{t:'kira', act:'tembak', need:2}},
+   g:{t:'kira', act:'tembak', need:2}, sl:'telinga'},
 
   /* --- lari --- */
   {id:'kasut',   nm:'Kasut Larian',        kat:'lari', ic:'lari', xp:520,
-   g:{t:'kira', act:'lari', need:10}}
+   g:{t:'kira', act:'lari', need:10}, sl:'kaki'}
 ];
 const OWNED = {botol:true, kopiah:true};
+/* what is actually worn, per slot. Buying puts a thing in the cupboard;
+   wearing it is a second, separate decision. */
+const PAKAI = {kepala:'kopiah'};
+
+function itemOf(id){
+  return KEDAI.find(function(x){ return x.id === id; }) || null;
+}
+function pakai(id){
+  const it = itemOf(id);
+  if (!it || !it.sl || !OWNED[id]) return;
+  PAKAI[it.sl] = PAKAI[it.sl] === id ? null : id;
+  setRank(state.rank);
+  renderKedai();
+  renderPakai();
+  toast(PAKAI[it.sl] ? it.nm.toUpperCase() + ' DIPAKAI'
+                     : it.nm.toUpperCase() + ' DISIMPAN');
+}
+/* the figure is rebuilt from scratch on every change, so it only ever
+   needs the ids -- no state lives inside the mesh */
+function equipped(){
+  const e = {};
+  Object.keys(PAKAI).forEach(function(k){
+    if (PAKAI[k] && OWNED[PAKAI[k]]) e[k] = PAKAI[k];
+  });
+  return e;
+}
 
 /* Is the gate open? Returns null when open, or the reason it is not. */
 function gateOf(item){
@@ -1420,6 +1658,7 @@ function cfgFor(rankIdx){
   const c = {};
   Object.keys(base).forEach(function(k){ c[k] = base[k]; });
   c.face = {w:m.w, h:m.h};
+  c.equip = equipped();
   c.skin = KULIT[rupa.kulit];
   c.hair = RAMBUT[rupa.rambut];
   c.shirt = WARNA_BAJU[rupa.baju];
@@ -1556,7 +1795,8 @@ function toggleAmal(i, btn){
     toast('NAIK PANGKAT → ' + RANKS[state.rank].name.toUpperCase());
   }
   renderMeters();
-  if (state.screen === 's-kedai') renderKedai();
+  /* a rank-up can take the head slot away, so both views must re-read it */
+  renderKedai(); renderPakai();
 }
 
 /* =====================================================================
@@ -1644,7 +1884,15 @@ function renderKedai(){
     const gate = gateOf(i), own = OWNED[i.id];
     const afford = state.wallet >= i.xp;
     let right;
-    if (own) right = '<span class="own">DIMILIKI</span>';
+    if (own && i.sl){
+      const on = PAKAI[i.sl] === i.id;
+      const blocked = (i.sl === 'kepala' && RANKS[state.rank].headwear !== 'none');
+      right = blocked
+        ? '<div class="gate" style="color:var(--text-muted)">PANGKAT INI ADA<br>TUTUP KEPALA</div>'
+        : '<button type="button" class="wear' + (on ? ' on' : '') + '" data-w="'
+          + i.id + '">' + (on ? 'DIPAKAI' : 'PAKAI') + '</button>';
+    }
+    else if (own) right = '<span class="own">DIMILIKI</span>';
     else if (gate) right = '<div class="gate">' + gate.txt.toUpperCase() + '</div>';
     else right = '<button type="button" class="buy" data-id="' + i.id + '"'
       + (afford ? '' : ' disabled') + '>' + i.xp + ' XP</button>';
@@ -1654,13 +1902,43 @@ function renderKedai(){
       + (i.rare ? '<span class="rare">RARE</span>' : '') + '</div>'
       + '<div class="is">' + i.xp + ' XP'
       + (gate && !own ? ' // TERKUNCI' : '')
-      + (!gate && !own && !afford ? ' // BAKI TAK CUKUP' : '') + '</div></div>'
+      + (!gate && !own && !afford ? ' // BAKI TAK CUKUP' : '')
+      + (own && i.sl ? ' // ' + slotName(i.sl).toUpperCase() : '')
+      + (own && !i.sl ? ' // TAK DIPAKAI PADA AVATAR' : '') + '</div></div>'
       + right + '</div>';
   }).join('');
 
   el('kedai-list').querySelectorAll('.buy').forEach(function(b){
     b.addEventListener('click', function(){ beli(b.dataset.id); });
   });
+  el('kedai-list').querySelectorAll('.wear').forEach(function(b){
+    b.addEventListener('click', function(){ pakai(b.dataset.w); });
+  });
+}
+
+function slotName(k){
+  const s = SLOTS_PAKAI.find(function(x){ return x.k === k; });
+  return s ? s.nm : k;
+}
+
+/* What the figure is actually wearing, on the Avatar screen where the
+   figure is. One row per slot, so an empty slot is visible too. */
+function renderPakai(){
+  const eqp = equipped();
+  el('pakai').innerHTML = SLOTS_PAKAI.map(function(sl){
+    const id = eqp[sl.k], it = id ? itemOf(id) : null;
+    const blocked = (sl.k === 'kepala' && RANKS[state.rank].headwear !== 'none');
+    /* the panel must agree with the figure: a kopiah assigned to the head
+       of a rank that wears a tanijak is NOT on the avatar, so saying
+       "Kopiah Putih" here would be a lie about what you are looking at */
+    return '<div class="pkr"><span class="pk-s">' + sl.nm.toUpperCase() + '</span>'
+      + (it && !blocked
+          ? '<span class="pk-i">' + vi(it.ic, 18) + it.nm + '</span>'
+          : '<span class="pk-e">'
+            + (blocked ? (it ? it.nm + ' — ditutup pangkat' : 'diambil oleh pangkat')
+                       : 'kosong') + '</span>')
+      + '</div>';
+  }).join('');
 }
 
 function beli(id){
@@ -1672,6 +1950,7 @@ function beli(id){
   OWNED[id] = true;
   renderMeters();
   renderKedai();
+  renderPakai();
   toast(i.nm.toUpperCase() + ' DIBELI — ' + i.xp + ' XP');
 }
 
@@ -1703,7 +1982,7 @@ function drawVenues(cat){
         '<div class="bot"><div class="price">' +
         '<div class="old">'+v.old+'</div>' +
         '<div class="new">'+v.neu+'</div>' +
-        '<div class="note">HARGA AHLI NUSUKI</div></div>' +
+        '<div class="note">HARGA AHLI MIRVA</div></div>' +
         '<button class="act" type="button">TABUNG</button></div>' +
         (v.bundle ? '<div class="bundle">'+vi('hex', 0, true)+'<span>'+v.bundle+'</span></div>' : '') +
         '</div>';
@@ -1772,10 +2051,10 @@ try {
 }
 
 renderBadges(); renderMeters(); renderAmal(); renderRek(); renderMuh(); renderTabs();
-renderRupa(); renderKedai();
+renderRupa(); renderKedai(); renderPakai();
 startLoop();
 
-window.NUSUKI_APP = {state:state, go:go, setRank:setRank, has3D:function(){ return HAS3D; }};
+window.MIRVA_APP = window.NUSUKI_APP = {state:state, go:go, setRank:setRank, has3D:function(){ return HAS3D; }};
 window.ICON_IMG = ICON_IMG;
 </script>
 </body>
