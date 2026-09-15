@@ -1333,7 +1333,7 @@ function lvlOf(umur){
 }
 
 const SEKOLAH = [
-  {k:'harakah', nm:'Sekolah Harakah', short:'HARAKAH', f2f:true},
+  {k:'islam', nm:'Sekolah Islam (Private)', short:'ISLAM (PRIVATE)', f2f:true},
   {k:'jauh',    nm:'Asrama jauh',     short:'ASRAMA JAUH', f2f:false},
   {k:'dekat',   nm:'Asrama dekat',    short:'ASRAMA DEKAT', f2f:true},
   {k:'harian',  nm:'Sekolah harian',  short:'HARIAN', f2f:true}
@@ -1348,7 +1348,9 @@ const TAHAP = {
          col:'--g5'}
 };
 
-/* Wasilah, verbatim. `teori` and `amali` are the module's two columns. */
+/* Wasilah, verbatim, with one substitution: the module's "Harakah" (and
+   its shorthand "H") reads as "Islam" throughout this build, at the
+   author's instruction. Nothing else in these strings is changed. */
 const KONTEN = {
   '01': [
     {ob:'Memupuk intima’ kepada islam',
@@ -1380,11 +1382,11 @@ const KONTEN = {
     {ob:'Memahami permasalahan dan cabaran umat islam, khususnya remaja islam',
      pn:'Melihat satu persatu permasalahan umat, strategi musuh dalam serangan pemikiran terhadap remaja muslim, sehingga terbina perasaan untuk bertindak.',
      teori:['Tadabbur nasib umat islam (IRIS) — bina kehendak nasional','Memahami realiti islam & ancaman terhadapnya hari ini','Memahami hakikat hamba','Memahami hakikat pertembungan di Palestin'],
-     amali:['Ziarah agensi H — kajian ringan realiti masyarakat','Projek hasilkan bahan kesedaran realiti umat (digital / fizikal)']},
+     amali:['Ziarah agensi Islam — kajian ringan realiti masyarakat','Projek hasilkan bahan kesedaran realiti umat (digital / fizikal)']},
     {ob:'Memahami tanggungjawab dakwah',
      pn:'Kesedaran untuk tidak hidup dan baik seorang diri. Memahami peranan dan tanggungjawab asas seorang muslim terhadap umat (tugas khalifah).',
      teori:['Sirah nabawi & khulafa rasyidin; podcast TS (Sirah untuk pemula)','Daurah dan nadwah mengenai wujubud dakwah','Memahami hakikat dan peranan dakwah dalam konteks tamadun'],
-     amali:['Ziarah qudama dan pimpinan H / agensi untuk mengambil pengalaman jalan dakwah (pengkaderan ISMA, PEMBINA, BLN)']},
+     amali:['Ziarah qudama dan pimpinan Islam / agensi untuk mengambil pengalaman jalan dakwah (pengkaderan ISMA, PEMBINA, BLN)']},
     {ob:'Merancang dan melakukan dakwah fardiah',
      pn:'Mengimani tarbiah adalah asas dalam mengubah seseorang. Mula melakukan DF terhadap kenalan terdekat — rakan sekolah, jiran. Mula ingin menjadi qudwah.',
      teori:['Pengisian dakwah fardiah melalui daurah','Video: cara mempengaruhi mad’u'],
@@ -1407,7 +1409,7 @@ const KONTEN = {
 };
 
 const PERANAN = [
-  {nm:'Institusi Harakah', pc:40, col:'--g2',
+  {nm:'Institusi Islam', pc:40, col:'--g2',
    d:['Menyusun dan menjalankan MTB','Memantau perjalanan MTB','Perlatihan perlaksanaan MTB kepada murobbi','Menyusun libat urus ibu bapa']},
   {nm:'Masulin (murabbi)', pc:40, col:'--g4',
    d:['Menjalankan MTB di cawangan (usrah, program bulanan, tahunan)','Menjadi “abang” dari sudut hubungan hati','Menjadi “ustaz” dalam hal islam dan fikrah','Menjadi “syeikh” dalam hal hati','Menjadi “pemimpin” dalam menerajui jalan']},
@@ -1429,11 +1431,11 @@ function rng(seed){
 }
 
 const PEOPLE = [
-  {nm:'Ahmad Zulhilmi',    r:4, umur:15, sk:'harakah', consist:.86, drift:+0.6, silence:0, seed:1207, riang:9},
+  {nm:'Ahmad Zulhilmi',    r:4, umur:15, sk:'islam'   , consist:.86, drift:+0.6, silence:0, seed:1207, riang:9},
   {nm:'Muhammad Irfan',    r:3, umur:16, sk:'jauh',    consist:.81, drift:-2.4, silence:0, seed:3311, riang:74},
   {nm:'Nurhakim Danial',   r:2, umur:14, sk:'harian',  consist:.44, drift:-3.1, silence:4, seed:509,  riang:52},
   {nm:'Aiman Syafiq',      r:1, umur:12, sk:'harian',  consist:.38, drift:+2.8, silence:1, seed:8821, riang:16},
-  {nm:'Haziq Mustaqim',    r:5, umur:17, sk:'harakah', consist:.93, drift:+0.2, silence:0, seed:4104, riang:21},
+  {nm:'Haziq Mustaqim',    r:5, umur:17, sk:'islam'   , consist:.93, drift:+0.2, silence:0, seed:4104, riang:21},
   {nm:'Amir Hamzah',       r:3, umur:14, sk:'dekat',   consist:.72, drift:+0.4, silence:0, seed:667,  riang:33},
   {nm:'Luqman Hakimi',     r:2, umur:13, sk:'harian',  consist:.63, drift:-0.5, silence:0, seed:2290, riang:12},
   {nm:'Firdaus Ariff',     r:2, umur:15, sk:'jauh',    consist:.51, drift:-0.8, silence:6, seed:7715, riang:88},

@@ -390,6 +390,14 @@ Four sections, each answering a problem the module itself names:
   also why the existing recreation venues belong here: Berkuda Al-Heyzum and
   Menembak Jugra *are* the module's "aktiviti seronok dan rare".
 
+**One term is substituted throughout:** the module's *Harakah* — including
+its shorthand *H* — reads as *Islam* in this build, at the author's
+instruction. So `Sekolah Harakah` is `Sekolah Islam (Private)`, `Institusi
+Harakah` is `Institusi Islam`, and `agensi H` is `agensi Islam`. Nothing else
+in the transcribed strings is altered, and the substitution is noted in the
+code next to the data so a later reader does not mistake it for a transcription
+error.
+
 **What the source document does not contain:** the wasilah table stops partway
 through 02 — the file ends mid-sentence at "Majmuat Rasail (risalah". So tahap
 **03 has its three objectives and no teori or amali at all**, and one objective
