@@ -102,7 +102,40 @@ h2.k{ margin:0 0 9px; font-weight:400 }
     linear-gradient(#04120a, #061a0e);
 }
 #slot-home{ flex:0 0 76px; height:104px }
-#slot-avatar{ height:290px }
+#slot-avatar{ height:320px }
+
+/* Badges floating beside the avatar. These are ordinary DOM inside the slot,
+   sitting UNDER the 3D canvas -- which works because the canvas clears to
+   transparent and only paints the character, so everything else in the slot
+   shows straight through it. A chip that drifts behind the figure is read
+   correctly as being behind it. */
+.fb{
+  position:absolute; z-index:2; pointer-events:none;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  width:54px; padding:6px 4px 5px;
+  background:rgba(4,20,10,.82);
+  border:1px solid rgba(57,255,106,.45); border-radius:5px;
+  box-shadow:0 0 12px rgba(57,255,106,.18), inset 0 0 10px rgba(57,255,106,.06);
+  animation:fbfloat 3.6s ease-in-out infinite;
+}
+.fb-l{ left:9px }
+.fb-r{ right:9px }
+.fb .vi{ width:19px; height:19px }
+.fb span{
+  font-size:7.5px; letter-spacing:.1em; color:#9fd9b3;
+  text-align:center; line-height:1.15;
+}
+.fb::after{           /* a short tether pointing in toward the figure */
+  content:""; position:absolute; top:50%; width:13px; height:1px;
+  background:linear-gradient(90deg, rgba(57,255,106,.55), transparent);
+}
+.fb-l::after{ left:100% }
+.fb-r::after{ right:100%; transform:scaleX(-1) }
+@keyframes fbfloat{
+  0%,100%{ transform:translateY(-4px) }
+  50%    { transform:translateY(4px) }
+}
+@media (prefers-reduced-motion:reduce){ .fb{ animation:none } }
 .slot .cap{
   position:absolute; left:0; right:0; bottom:5px; text-align:center;
   font-size:8.5px; letter-spacing:.18em; color:var(--text-muted);
@@ -975,6 +1008,31 @@ function renderBadges(){
   const n = BADGES.filter(function(b){ return b.on; }).length;
   el('u-badges').textContent = n;
   el('a-bcount').textContent = 'BADGE — ' + n + ' / 20 DICAPAI';
+  renderFloatBadges();
+}
+
+/* Slots down both sides of the avatar, staggered so no two chips sit level
+   with each other and none lands on the figure in the middle. */
+const FLOAT_POS = [
+  {side:'l', top:'11%'}, {side:'r', top:'19%'},
+  {side:'l', top:'41%'}, {side:'r', top:'49%'},
+  {side:'l', top:'68%'}, {side:'r', top:'74%'}
+];
+function renderFloatBadges(){
+  const host = el('slot-avatar');
+  host.querySelectorAll('.fb').forEach(function(n){ n.remove(); });
+  BADGES.filter(function(b){ return b.on; })
+        .slice(0, FLOAT_POS.length)
+        .forEach(function(b, i){
+    const p = FLOAT_POS[i];
+    const d = document.createElement('div');
+    d.className = 'fb fb-' + p.side;
+    d.style.top = p.top;
+    d.style.animationDelay = (i * 0.45).toFixed(2) + 's';
+    d.setAttribute('aria-hidden', 'true');   // the badge grid below is the real list
+    d.innerHTML = vi(b.ic) + '<span>' + b.nm + '</span>';
+    host.appendChild(d);
+  });
 }
 
 function renderMeters(){

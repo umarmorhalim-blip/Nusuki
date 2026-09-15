@@ -41,6 +41,14 @@ the canvas is on top, transparent everywhere except those rects. WebGL
 viewports start at the bottom-left, so the y of each slot's
 `getBoundingClientRect()` is flipped.
 
+On the Avatar screen the earned badges float beside the figure as chips, two
+per side at staggered heights with a short tether pointing inward. They are
+ordinary DOM *inside* the slot, sitting under the canvas — which works because
+the canvas clears to transparent and paints only the character, so everything
+else in the slot shows straight through. A chip that drifts behind the figure
+therefore reads correctly as being behind it. They carry `aria-hidden`; the
+badge grid below the stats is the real, readable list.
+
 Ticking an amal row moves XP and Nur Amanah, and when XP fills the track the
 rank advances and the avatar is rebuilt as the next rank — the app's premise is
 that the avatar reflects real deeds, so the mockup demonstrates that loop
