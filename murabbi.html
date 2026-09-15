@@ -256,17 +256,59 @@ td{font-family:ui-monospace,Menlo,Consolas,monospace}
   stroke-linejoin:round}
 .crosshair{stroke:var(--line2); stroke-width:1}
 
-@media (max-width:1080px){
+/* =====================================================================
+   Two ways to read this on a phone.
+
+   The dashboard is a wide composition on purpose -- the triage list and
+   the mutarabbi panel are meant to be side by side, because the whole
+   point is reading one against the other. Reflowed into a single column
+   that relationship is gone, and it stops looking like the thing it is.
+
+   So on a narrow screen the default is the *whole* board, scaled to fit
+   and pinch-zoomable, the way you would review a mockup. `Susun telefon`
+   gives the reflowed column back for actually using it on a phone.
+   ===================================================================== */
+#framebox{width:100%}
+#board{container-type:inline-size; container-name:board}
+body.fit{overflow-x:hidden}
+body.fit #board{width:1440px; transform-origin:0 0}
+/* a transformed ancestor becomes the sticky containing block, and there
+   is nothing to stick to when the whole board is already in view */
+body.fit .mpanel{position:static}
+/* the live viewport is pinned to the layout viewport, so it would drift
+   away from its slot the moment you pinch-zoom -- in fit mode the slot
+   takes a baked figure instead */
+body.fit #gl{display:none}
+.slot img{position:absolute; inset:7% 0 3%; width:100%; height:90%;
+  object-fit:contain}
+
+#viewbar{position:fixed; left:50%; z-index:30;
+  bottom:calc(11px + env(safe-area-inset-bottom, 0px));
+  transform:translateX(-50%); display:flex; gap:3px; padding:3px;
+  background:#0a1610f2; border:1px solid var(--line2); border-radius:11px;
+  box-shadow:0 8px 26px #000a}
+#viewbar button{background:none; border:0; border-radius:8px;
+  color:var(--ink3); font:inherit; font-size:12px; font-weight:600;
+  padding:8px 13px; cursor:pointer}
+#viewbar button[aria-pressed=true]{background:var(--surf3); color:var(--ink)}
+
+/* These ask the board, not the window. Stacked mode: the board is the
+   window's width, so they fire exactly as media queries would. Fit mode:
+   the board is 1440px, so none of them fire and the wide composition
+   survives being scaled down -- which is the whole point, since the
+   triage list and the mutarabbi panel are meant to be read against each
+   other, and a single column destroys that. */
+@container board (max-width:1080px){
   .cols{grid-template-columns:1fr}
   .mpanel{position:static}
   .tiles{grid-template-columns:repeat(2,1fr)}
 }
 /* the topic card needs prose width, so it stops sharing a row well before
    the page itself stacks */
-@media (max-width:820px){
+@container board (max-width:820px){
   .pair{grid-template-columns:1fr}
 }
-@media (max-width:560px){
+@container board (max-width:560px){
   .wrap{padding:16px 14px 60px}
   .tiles{grid-template-columns:1fr}
   .mhead{grid-template-columns:1fr}
@@ -282,6 +324,12 @@ td{font-family:ui-monospace,Menlo,Consolas,monospace}
 <div id="tip" role="tooltip"></div>
 <div id="toast" role="status"></div>
 
+<div id="viewbar" hidden>
+  <button id="vb-fit" aria-pressed="true">Pandangan penuh</button>
+  <button id="vb-stack" aria-pressed="false">Susun telefon</button>
+</div>
+
+<div id="framebox"><div id="board">
 <div class="wrap">
 
   <header>
@@ -435,6 +483,7 @@ td{font-family:ui-monospace,Menlo,Consolas,monospace}
     </div>
   </div>
 </div>
+</div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -1201,7 +1250,7 @@ const SPILL = FLAGGED.slice(5);
    as PNGs -- a live pass per list row inside a scrolling card is not
    affordable, and the list never needs one.
    ===================================================================== */
-const BUST = [];
+const BUST = [], BODY = [];
 function bakeBusts(){
   const c = document.createElement('canvas');
   c.width = c.height = 220;
@@ -1227,6 +1276,15 @@ function bakeBusts(){
     sc.add(g);
     r.render(sc, cam);
     BUST[i] = c.toDataURL('image/png');
+
+    /* and the whole figure, for the fit-to-width view where the live
+       viewport is switched off */
+    const b = 17 * cfg.scale;
+    cam.position.set(6 * cfg.scale, b + 4, 62 * cfg.scale);
+    cam.lookAt(0, b, 0);
+    r.render(sc, cam);
+    BODY[i] = c.toDataURL('image/png');
+
     sc.remove(g);
   });
   r.dispose();
@@ -1686,6 +1744,7 @@ function select(p){
 
   renderMentee();
   renderTaujihat();
+  slotFigure();
   el('triage').querySelectorAll('.trow').forEach(function(b){
     b.setAttribute('aria-current', b.dataset.nm === p.nm ? 'true' : 'false');
   });
@@ -1732,6 +1791,51 @@ function renderPulse(){
   else lineChart(el('pulse'), avg, {h:150, stroke:tok('--g4')});
 }
 
+/* ---- fit-to-width. The frame keeps its 1440px layout and is scaled
+        down bodily, so the composition survives; the box below it takes
+        the scaled height so the page still scrolls to the right end. ---- */
+const NARROW = 1024;
+let FIT = innerWidth < NARROW;
+
+function applyFit(){
+  const box = el('framebox'), fr = el('board'), bar = el('viewbar');
+  bar.hidden = innerWidth >= NARROW;
+  if (innerWidth >= NARROW) FIT = false;
+
+  if (FIT){
+    document.body.classList.add('fit');
+    const k = innerWidth / 1440;
+    fr.style.transform = 'scale(' + k + ')';
+    /* scrollHeight is the untransformed layout height, which is exactly
+       what we need to multiply */
+    box.style.height = Math.ceil(fr.scrollHeight * k) + 'px';
+  } else {
+    document.body.classList.remove('fit');
+    fr.style.transform = '';
+    box.style.height = '';
+  }
+  el('vb-fit').setAttribute('aria-pressed', FIT);
+  el('vb-stack').setAttribute('aria-pressed', !FIT);
+  slotFigure();
+}
+
+/* in fit mode the slot shows the baked figure; otherwise the live one */
+function slotFigure(){
+  const img = slotEl.querySelector('img');
+  if (FIT){
+    const src = BODY[current.r - 1];
+    if (!src) return;
+    if (img) img.src = src;
+    else slotEl.insertAdjacentHTML('beforeend',
+      '<img src="' + src + '" alt="Avatar ' + current.nm + '">');
+  } else if (img){
+    img.remove();
+  }
+}
+
+el('vb-fit').addEventListener('click', function(){ FIT = true;  applyFit(); });
+el('vb-stack').addEventListener('click', function(){ FIT = false; applyFit(); });
+
 let tt;
 function toast(msg){
   const t = el('toast');
@@ -1746,14 +1850,14 @@ el('f-weeks').addEventListener('click', function(e){
   el('f-weeks').querySelectorAll('button').forEach(function(x){
     x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
   });
-  renderPulse(); renderMentee();
+  renderPulse(); renderMentee(); applyFit();
 });
 
 el('f-table').addEventListener('click', function(){
   TABLE = !TABLE;
   el('f-table').setAttribute('aria-pressed', TABLE);
   el('f-table').textContent = TABLE ? 'Papar carta' : 'Papar jadual';
-  renderPulse(); renderMentee();
+  renderPulse(); renderMentee(); applyFit();
 });
 
 el('f-halaqah').addEventListener('change', function(){
@@ -1792,9 +1896,12 @@ renderDist();
 renderTopic();
 renderPulse();
 select(current);
+applyFit();
 frame();
 
-addEventListener('resize', function(){ renderPulse(); renderMentee(); });
+addEventListener('resize', function(){
+  renderPulse(); renderMentee(); applyFit();
+});
 </script>
 </body>
 </html>

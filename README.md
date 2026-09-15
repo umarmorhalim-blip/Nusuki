@@ -340,6 +340,33 @@ Single-series charts get no legend box — the card title names the series — a
 only the last point is direct-labelled. Both line charts carry a crosshair and a
 per-week tooltip; heatmap cells and bar rows carry their own.
 
+### On a phone you get the whole board, not a column
+
+The first build reflowed into a single column below 1080px, and it stopped
+looking like the thing it is. That is not a cosmetic loss: the triage list and
+the mutarabbi panel are placed side by side because the entire point is reading
+one against the other, and a column destroys that relationship.
+
+So on a narrow screen the default is now the **whole board**, scaled to fit the
+width and pinch-zoomable — the way you review a mockup. `Susun telefon` in the
+floating bar gives the reflowed column back for actually using it on a phone.
+
+Two things this needed:
+
+- **The breakpoints ask the board, not the window** (`@container board`). Scaling
+  a 1440px layout down does nothing if its own media queries have already
+  collapsed it to one column at the viewport's 390px — the first attempt
+  produced a shrunken single column, which was the worst of both. In stacked
+  mode the board *is* the window's width, so the container queries fire exactly
+  as media queries would.
+- **The live viewport is switched off in fit mode.** The canvas is pinned to the
+  layout viewport, so it would drift away from its slot the instant you
+  pinch-zoom. The slot takes a baked full-figure PNG instead — the same five
+  renders that produce the busts, from a second camera.
+
+The view bar itself sits outside the scaled board, so it stays a real tap target
+however far the board shrinks.
+
 ### Reuse and cost
 
 The voxel engine is lifted verbatim from `app.html`, because the figure the
