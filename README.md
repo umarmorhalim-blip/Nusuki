@@ -264,3 +264,99 @@ no equivalent for.
 One shared `BoxGeometry` scaled per part, one shared grain texture, no shadow
 maps and no post-processing — the glow is emissive materials plus additive
 radial sprites. The whole scene renders at roughly 7.7k triangles.
+
+## `murabbi.html` — the mentor dashboard
+
+The mentee app is a game surface. This is a reading surface for someone who has
+ten minutes before halaqah, so the tokens are the same and the glow is turned
+down.
+
+**The thesis: the dashboard's job is to generate conversations, not scores.**
+That comes from the app's own copy on the Muhasabah screen — *"Murobbi memantau
+untuk taujihat — bukan penilaian luaran semata-mata"* — and it decides every
+other choice here.
+
+Deliberately absent: a leaderboard, the raw muhasabah log, any red styling, and
+absolute score as the primary sort.
+
+### Triage by change, not by level
+
+The landing list surfaces people for one of four reasons, each with its own
+colour *and* its own shape so the four never rest on hue:
+
+| Reason | Trigger |
+|---|---|
+| `SENYAP` | no entries for ≥3 days — the row is about the person, not the amal |
+| `TURUN` | Nur Amanah dropped ≥5 points over two weeks |
+| `ISYARAT` | one prayer reported rushed ≥18 of 28 days — a pattern, not a day |
+| `NAIK` | up ≥5 points — surfaced to be acknowledged, not corrected |
+
+**The list is capped at five, and the cap is the design.** The first build
+surfaced nine of twelve, which is the roster with extra steps. Worse, six rows
+read *"Solat Asar dilaporkan tergesa…"* with only the count differing — and
+that repetition is itself the finding. A pattern half the group shares is not
+ten private problems, so whoever the cap cuts rolls into the halaqah topic
+instead of being dropped.
+
+That is why the topic card weighs two different kinds of evidence and says which
+one won: the weakest amal (a level, averaged) versus a shared reflection pattern
+(a pattern). The pattern wins at half the group.
+
+### The privacy line
+
+The murabbi sees the *pattern*; the mentee owns the *entry*. Muhasabah reaches
+this screen only as 28-day tallies per prayer — never the day-by-day text. The
+card says so out loud, because a promise the interface doesn't visibly keep is
+just trust. (Unprompted suggestion for the mentee app: an *"Apa murabbi nampak"*
+screen, so the promise is checkable from the other side.)
+
+### The charts
+
+Colour does exactly one job each, and the colour part is computed rather than
+eyeballed — every palette below was run through the data-viz validator.
+
+- **Sequential green ramp** `#215433 #2d7742 #3a9c54 #51c76d #90efa1` — magnitude:
+  the 28-day mutabaah heatmap and the rank distribution. Validated as an ordinal
+  ramp: monotone lightness, ≥0.06 steps, and the low end clears the card at
+  2.06:1 (an earlier `#122a1c` sat at 1.19:1 and vanished into the surface).
+- **Categorical** `#286e3c` tenang / `#1e78be` mengantuk / `#c8821e` tergesa —
+  identity, for the stacked tendency bars. Blue sits between the two a red-green
+  colourblind reader confuses, *and* the green is stepped dark enough that the
+  pair separates by lightness on its own: at the brighter `#33a24a` the
+  green↔amber pair was ΔE 3.8 under protanopia. It now clears 13.4 protan and
+  19.8 normal **on all pairs**, not just adjacent ones — adjacent is the right
+  pairlist for a stack, but the legend invites the direct green-vs-amber
+  comparison, so all-pairs is the honest gate.
+- **Status** amber `#bf8a22` perlu disapa / grey `#6a8b78` senyap / green
+  `#51c76d` naik — reserved, never reused as a series colour, and always shipped
+  with an icon and a label.
+
+The green's 2.93:1 against the card is a documented WARN, not a pass, and it
+obligates relief: every segment is labelled and a full table view exists behind
+*Papar jadual*. The segment label picks light or dark ink from the fill's own
+luminance rather than assuming one works on all three.
+
+Single-series charts get no legend box — the card title names the series — and
+only the last point is direct-labelled. Both line charts carry a crosshair and a
+per-week tooltip; heatmap cells and bar rows carry their own.
+
+### Reuse and cost
+
+The voxel engine is lifted verbatim from `app.html`, because the figure the
+mentee sees in their own app has to be the figure the murabbi sees or the
+dashboard becomes a spreadsheet about strangers. Two tiers:
+
+- The selected mentee's avatar is **live**, in a scissored viewport pinned to
+  its slot — one scene, one draw.
+- The triage busts are the **same geometry baked once** to five PNGs at boot
+  (one per rank). A live pass per list row inside a scrolling card is not
+  affordable, and the list never needs one.
+
+### The generated data
+
+Twelve people × 28 days × 5 amal is 1,680 numbers, and inventing them by hand
+would make them look invented. Each mutarabbi carries a `consist` (how reliably
+they tick) and a `drift` (which way they are heading), and a seeded LCG honours
+both — so the trend line, the heatmap and the triage reason for one person all
+agree with each other. Silence is literal: a mutarabbi who has not written for
+six days has six empty columns, and the charts do not quietly fill them in.

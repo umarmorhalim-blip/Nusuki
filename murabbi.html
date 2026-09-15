@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nusuki — Dashboard Murabbi</title>
+<style>
+/* =====================================================================
+   Nusuki -- dashboard murabbi.
+
+   The mentee app is a game surface: neon, glow, motion. This is a
+   *reading* surface for a mentor who has ten minutes before halaqah, so
+   the same tokens are kept but the glow is turned down and the grid is
+   widened. The avatar is the one loud thing on the page, because it is
+   the thread of continuity back to what the mutarabbi sees.
+
+   Colour does one job each:
+     - the green ramp        magnitude (heatmap, rank distribution)
+     - green/blue/amber      identity (the three muhasabah tendencies,
+                             blue between the two the eye confuses)
+     - amber / grey / green  state (perlu disapa / senyap / naik)
+   Deliberately absent: red. Nothing a mutarabbi does is an alarm.
+   ===================================================================== */
+:root{
+  --bg:#07110c; --surf:#0c1811; --surf2:#112017; --surf3:#16281d;
+  --line:#1e3a2a; --line2:#2a4f39;
+  --ink:#e7f5ec; --ink2:#9fbdac; --ink3:#678a75;
+  --neon:#39ff6a;
+
+  /* sequential ramp -- validated ordinal: monotone L, >=0.06 steps,
+     low end clears the surface at 2.06:1 */
+  --g1:#215433; --g2:#2d7742; --g3:#3a9c54; --g4:#51c76d; --g5:#90efa1;
+
+  /* categorical. Green is stepped this dark on purpose: a protanope
+     tells green from amber by lightness, nothing else, and at the
+     brighter green the pair collapsed to dE 3.8. Validated ALL-pairs
+     (not just adjacent, because the legend invites the direct green-vs-
+     amber comparison): worst dE 13.4 protan, 19.8 normal. */
+  --c-tenang:#286e3c; --c-lena:#1e78be; --c-gesa:#c8821e;
+
+  /* state */
+  --st-sapa:#bf8a22; --st-senyap:#6a8b78; --st-naik:#51c76d;
+
+  --r:14px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:
+    radial-gradient(1200px 600px at 78% -10%, #0d2418 0%, transparent 62%),
+    var(--bg);
+  color:var(--ink);
+  font:14px/1.5 'DM Sans',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+a{color:inherit}
+
+/* --- canvas: on top of the DOM, cleared to transparent, scissored to a
+       slot rect. See README -- setSize must write style.width/height or a
+       2x display lays the canvas out at its intrinsic (buffer) size. --- */
+#gl{position:fixed; inset:0; width:100%; height:100%; z-index:5;
+    pointer-events:none}
+
+.wrap{max-width:1440px; margin:0 auto; padding:22px 24px 72px}
+
+/* ---------- header ---------- */
+header{display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+       padding:0 0 18px}
+.brand{display:flex; align-items:center; gap:11px}
+.brand .mk{width:30px; height:30px; flex:none}
+.brand b{font-size:16px; letter-spacing:.14em; font-weight:700}
+.brand span{display:block; font-size:10px; letter-spacing:.26em;
+            color:var(--ink3); margin-top:1px}
+.hspace{flex:1}
+.who{text-align:right; line-height:1.35}
+.who b{font-size:13px; font-weight:600}
+.who span{display:block; font-size:11px; color:var(--ink3)}
+.avatar-chip{width:34px; height:34px; border-radius:9px; flex:none;
+  background:var(--surf2); border:1px solid var(--line);
+  display:grid; place-items:center}
+
+/* ---------- filter row: one row, above the charts ---------- */
+.filters{display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+         padding:0 0 18px; border-bottom:1px solid var(--line);
+         margin-bottom:20px}
+.sel, .seg{background:var(--surf2); border:1px solid var(--line);
+  border-radius:9px; color:var(--ink); font:inherit; font-size:12.5px}
+.sel{padding:8px 11px}
+.seg{display:flex; padding:2px; gap:2px}
+.seg button{background:none; border:0; color:var(--ink3); font:inherit;
+  font-size:12px; padding:6px 12px; border-radius:7px; cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--surf3); color:var(--ink)}
+.flabel{font-size:11px; letter-spacing:.14em; color:var(--ink3)}
+.ghost{background:none; border:1px solid var(--line); border-radius:9px;
+  color:var(--ink2); font:inherit; font-size:12px; padding:7px 12px;
+  cursor:pointer}
+.ghost:hover{border-color:var(--line2); color:var(--ink)}
+
+/* ---------- stat tiles ---------- */
+.tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;
+       margin-bottom:20px}
+.tile{background:var(--surf); border:1px solid var(--line);
+  border-radius:var(--r); padding:15px 16px 14px; position:relative;
+  overflow:hidden}
+.tile .k{font-size:10.5px; letter-spacing:.17em; color:var(--ink3)}
+.tile .v{font-size:32px; font-weight:700; letter-spacing:-.02em;
+  margin:7px 0 2px; font-family:ui-monospace,Menlo,Consolas,monospace}
+.tile .d{font-size:11.5px; color:var(--ink2); display:flex;
+  align-items:center; gap:6px}
+.tile .bar{position:absolute; left:0; top:0; bottom:0; width:3px}
+
+/* ---------- grid ---------- */
+.cols{display:grid; grid-template-columns:minmax(0,1.42fr) minmax(0,1fr);
+      gap:18px; align-items:start}
+.pair{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+.card{background:var(--surf); border:1px solid var(--line);
+  border-radius:var(--r); padding:17px 18px 18px; margin-bottom:18px}
+.card:last-child{margin-bottom:0}
+.ch{display:flex; align-items:baseline; gap:10px; margin-bottom:3px}
+.ch h2{font-size:14.5px; font-weight:650; margin:0; letter-spacing:.005em}
+.ch .n{font-size:11px; color:var(--ink3); margin-left:auto;
+  letter-spacing:.1em; white-space:nowrap}
+.sub{font-size:12px; color:var(--ink3); margin:0 0 14px; max-width:62ch}
+
+/* ---------- triage rows ---------- */
+.trow{display:grid; grid-template-columns:44px 1fr auto; gap:13px;
+  align-items:center; padding:11px; border:1px solid transparent;
+  border-radius:11px; cursor:pointer; background:var(--surf2);
+  margin-bottom:8px; text-align:left; width:100%; font:inherit;
+  color:inherit}
+.trow:hover{border-color:var(--line2)}
+.trow[aria-current=true]{border-color:var(--line2); background:var(--surf3)}
+.trow .bust{width:44px; height:44px; border-radius:9px; background:#0a150e;
+  border:1px solid var(--line); object-fit:cover; display:block}
+.trow .nm{font-size:13.5px; font-weight:600; display:flex; gap:8px;
+  align-items:center}
+.trow .why{font-size:12px; color:var(--ink2); margin-top:2px}
+.chip{font-size:9.5px; letter-spacing:.14em; padding:3px 7px;
+  border-radius:999px; border:1px solid currentColor; font-weight:600;
+  display:inline-flex; align-items:center; gap:5px; white-space:nowrap}
+.chip svg{width:8px; height:8px}
+.c-sapa{color:var(--st-sapa)} .c-senyap{color:var(--st-senyap)}
+.c-naik{color:var(--st-naik)}
+.act{font-size:11.5px; color:var(--ink2); background:none;
+  border:1px solid var(--line); border-radius:8px; padding:7px 11px;
+  cursor:pointer; white-space:nowrap}
+.act:hover{border-color:var(--line2); color:var(--ink)}
+
+/* ---------- mentee panel ---------- */
+.mpanel{position:sticky; top:22px}
+.mhead{display:grid; grid-template-columns:118px 1fr; gap:16px;
+  align-items:center}
+.slot{position:relative; height:158px; border-radius:11px;
+  background:linear-gradient(180deg,#0b1a12,#081109);
+  border:1px solid var(--line); overflow:hidden}
+.slot::after{content:''; position:absolute; inset:auto 0 0 0; height:34%;
+  background:linear-gradient(180deg,transparent,rgba(57,255,106,.07))}
+.mname{font-size:19px; font-weight:700; letter-spacing:-.01em}
+.mrank{font-size:11px; letter-spacing:.2em; color:var(--neon);
+  margin-top:4px}
+.mmeta{font-size:12px; color:var(--ink3); margin-top:9px; line-height:1.7}
+.mmeta b{color:var(--ink2); font-weight:600}
+
+/* ---------- heatmap ---------- */
+.hm{display:grid; gap:3px; grid-template-columns:88px 1fr}
+.hm-rows{display:grid; gap:3px}
+.hm-lab{font-size:11px; color:var(--ink2); height:14px; display:flex;
+  align-items:center; white-space:nowrap}
+.hm-line{display:grid; gap:3px; grid-auto-flow:column;
+  grid-auto-columns:1fr}
+.cell{height:14px; border-radius:3px; background:#101d15;
+  box-shadow:inset 0 0 0 1px #16281d; cursor:default}
+.hm-x{display:flex; justify-content:space-between; font-size:10px;
+  color:var(--ink3); margin-top:7px; padding-left:91px}
+
+/* ---------- legend ---------- */
+.legend{display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px;
+  color:var(--ink2); margin-top:13px}
+.legend i{width:9px; height:9px; border-radius:2px; display:inline-block;
+  margin-right:6px; vertical-align:-1px}
+.ramp{display:flex; align-items:center; gap:7px; font-size:10.5px;
+  color:var(--ink3); margin-top:12px}
+.ramp .sw{display:flex; gap:2px}
+.ramp .sw i{width:15px; height:9px; border-radius:2px}
+
+/* ---------- bars ---------- */
+.bars{display:grid; gap:11px}
+.brow{display:grid; grid-template-columns:78px 1fr; gap:11px;
+  align-items:center}
+.brow .bl{font-size:11.5px; color:var(--ink2); white-space:nowrap}
+.track{height:18px; display:flex; gap:2px; border-radius:4px}
+.seg-f{height:100%; position:relative; display:flex; align-items:center;
+  justify-content:center; font-size:10px; font-weight:700; overflow:hidden}
+.seg-f:first-child{border-radius:4px 0 0 4px}
+.seg-f:last-child{border-radius:0 4px 4px 0}
+.dist .brow{grid-template-columns:104px 1fr 34px}
+.dist .track{gap:0}
+.dist .fill{height:100%; border-radius:0 4px 4px 0}
+.dist .cnt{font-size:11.5px; color:var(--ink2); text-align:right;
+  font-family:ui-monospace,Menlo,Consolas,monospace}
+
+/* ---------- note / privacy ---------- */
+.note{font-size:11.5px; color:var(--ink3); border-left:2px solid var(--line2);
+  padding:2px 0 2px 11px; margin-top:14px; line-height:1.65}
+.note b{color:var(--ink2); font-weight:600}
+
+/* ---------- taujihat ---------- */
+.tj{display:grid; gap:10px}
+.tj-item{background:var(--surf2); border-radius:10px; padding:11px 12px;
+  font-size:12.5px; color:var(--ink2); line-height:1.6}
+.tj-item .d{font-size:10px; letter-spacing:.13em; color:var(--ink3);
+  margin-bottom:4px}
+.tj-new{display:flex; gap:8px; margin-top:12px}
+.tj-new input{flex:1; background:var(--surf2); border:1px solid var(--line);
+  border-radius:9px; color:var(--ink); font:inherit; font-size:12.5px;
+  padding:9px 11px}
+.tj-new input::placeholder{color:var(--ink3)}
+.tj-new button{background:var(--g2); border:0; border-radius:9px;
+  color:#06120b; font:inherit; font-weight:700; font-size:12px;
+  padding:9px 15px; cursor:pointer}
+
+/* ---------- table view ---------- */
+table{width:100%; border-collapse:collapse; font-size:11.5px; margin-top:12px}
+th,td{text-align:right; padding:5px 7px; border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left; color:var(--ink2)}
+th{color:var(--ink3); font-weight:600; letter-spacing:.06em;
+   font-size:10.5px}
+td{font-family:ui-monospace,Menlo,Consolas,monospace}
+[hidden]{display:none!important}
+
+/* ---------- tooltip ---------- */
+#tip{position:fixed; z-index:40; pointer-events:none; opacity:0;
+  transition:opacity .09s; background:#0a1610f2; color:var(--ink);
+  border:1px solid var(--line2); border-radius:9px; padding:8px 10px;
+  font-size:11.5px; line-height:1.55; box-shadow:0 8px 24px #0009;
+  max-width:230px}
+#tip b{font-weight:650}
+#tip .r{display:flex; gap:8px; align-items:center;
+  justify-content:space-between}
+#tip i{width:8px; height:8px; border-radius:2px; display:inline-block;
+  margin-right:5px}
+
+/* ---------- toast ---------- */
+#toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%)
+  translateY(14px); background:#0a1610f5; border:1px solid var(--line2);
+  border-radius:11px; padding:10px 16px; font-size:12.5px; z-index:50;
+  opacity:0; transition:.22s; pointer-events:none}
+#toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
+
+/* ---------- svg chart ---------- */
+.axis{stroke:var(--line); stroke-width:1}
+.gridline{stroke:var(--line); stroke-width:1; stroke-dasharray:2 4}
+.tk{fill:var(--ink3); font-size:10px;
+    font-family:ui-monospace,Menlo,Consolas,monospace}
+.spark-line{fill:none; stroke-width:2; stroke-linecap:round;
+  stroke-linejoin:round}
+.crosshair{stroke:var(--line2); stroke-width:1}
+
+@media (max-width:1080px){
+  .cols{grid-template-columns:1fr}
+  .mpanel{position:static}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+}
+/* the topic card needs prose width, so it stops sharing a row well before
+   the page itself stacks */
+@media (max-width:820px){
+  .pair{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .wrap{padding:16px 14px 60px}
+  .tiles{grid-template-columns:1fr}
+  .mhead{grid-template-columns:1fr}
+  .hm{grid-template-columns:62px 1fr}
+  .hm-x{padding-left:65px}
+  .dist .brow{grid-template-columns:86px 1fr 28px}
+  .brow{grid-template-columns:62px 1fr}
+}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="tip" role="tooltip"></div>
+<div id="toast" role="status"></div>
+
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <svg class="mk" viewBox="0 0 8 8" shape-rendering="crispEdges"></svg>
+      <div><b>NUSUKI</b><span>DASHBOARD MURABBI</span></div>
+    </div>
+    <div class="hspace"></div>
+    <div class="who">
+      <b>Ustaz Hazim Abdul Rahman</b>
+      <span id="today">—</span>
+    </div>
+    <div class="avatar-chip"><svg viewBox="0 0 8 8" width="18" height="18"
+      shape-rendering="crispEdges" id="chip-ico"></svg></div>
+  </header>
+
+  <div class="filters">
+    <span class="flabel">HALAQAH</span>
+    <select class="sel" id="f-halaqah">
+      <option>An-Nur · 12 mutarabbi</option>
+      <option>Al-Furqan · 9 mutarabbi</option>
+    </select>
+    <span class="flabel" style="margin-left:6px">TEMPOH</span>
+    <div class="seg" id="f-weeks" role="group" aria-label="Tempoh carta">
+      <button data-w="8"  aria-pressed="true">8 minggu</button>
+      <button data-w="12" aria-pressed="false">12 minggu</button>
+    </div>
+    <div class="hspace"></div>
+    <button class="ghost" id="f-table" aria-pressed="false">Papar jadual</button>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="cols">
+
+    <!-- ============ left: the halaqah ============ -->
+    <div>
+
+      <section class="card">
+        <div class="ch">
+          <h2>Perlu disapa hari ini</h2>
+          <span class="n" id="tri-n"></span>
+        </div>
+        <p class="sub">Disusun mengikut <b>perubahan</b>, bukan aras. Seorang
+          yang tinggi tapi jatuh mendadak muncul di sini; seorang yang rendah
+          tapi sedang menaik muncul untuk diiktiraf, bukan ditegur.</p>
+        <div id="triage"></div>
+      </section>
+
+      <section class="card">
+        <div class="ch">
+          <h2>Nadi halaqah</h2>
+          <span class="n" id="pulse-n">NUR AMANAH · PURATA</span>
+        </div>
+        <p class="sub">Purata Nur Amanah seluruh halaqah. Satu garis, jadi
+          tiada legenda — tajuk yang menamakannya.</p>
+        <div id="pulse"></div>
+        <div id="pulse-tbl" hidden></div>
+      </section>
+
+      <div class="pair">
+        <section class="card" style="margin:0">
+          <div class="ch"><h2>Sebaran pangkat</h2></div>
+          <p class="sub">Sebaran, bukan ranking.</p>
+          <div class="bars dist" id="dist"></div>
+          <div class="ramp">
+            <span>rendah</span>
+            <span class="sw" id="ramp-sw"></span>
+            <span>tinggi</span>
+          </div>
+        </section>
+
+        <section class="card" style="margin:0">
+          <div class="ch"><h2>Topik halaqah minggu ini</h2></div>
+          <p class="sub">Satu topik, dipilih antara amal paling lemah dan
+            pola yang dikongsi ramai.</p>
+          <div id="topic"></div>
+        </section>
+      </div>
+
+    </div>
+
+    <!-- ============ right: one mutarabbi ============ -->
+    <div class="mpanel">
+
+      <section class="card">
+        <div class="mhead">
+          <div class="slot" id="slot-mentee"></div>
+          <div>
+            <div class="mname" id="m-name">—</div>
+            <div class="mrank" id="m-rank">—</div>
+            <div class="mmeta" id="m-meta"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="ch">
+          <h2>Nur Amanah</h2>
+          <span class="n" id="m-trend-n"></span>
+        </div>
+        <p class="sub">Arah, bukan satu nombor. Nombor sehari boleh menipu;
+          satu garis beberapa minggu tidak.</p>
+        <div id="m-trend"></div>
+        <div id="m-trend-tbl" hidden></div>
+      </section>
+
+      <section class="card">
+        <div class="ch">
+          <h2>Mutabaah</h2>
+          <span class="n">28 HARI</span>
+        </div>
+        <p class="sub">Petak kosong bukan dosa — ia soalan.</p>
+        <div id="hm"></div>
+        <div class="hm-x"><span>28 hari lalu</span><span>hari ini</span></div>
+        <div class="ramp">
+          <span>0</span>
+          <span class="sw" id="hm-ramp"></span>
+          <span>penuh</span>
+        </div>
+        <div id="hm-tbl" hidden></div>
+      </section>
+
+      <section class="card">
+        <div class="ch">
+          <h2>Kecenderungan muhasabah</h2>
+          <span class="n">28 HARI</span>
+        </div>
+        <p class="sub">Per waktu solat sahaja.</p>
+        <div class="bars" id="moods"></div>
+        <div class="legend" id="mood-legend"></div>
+        <div id="moods-tbl" hidden></div>
+        <p class="note"><b>Murabbi nampak kecenderungan, bukan catatan
+          harian.</b> Apa yang ditulis dalam muhasabah kekal milik
+          mutarabbi. Yang sampai ke sini hanyalah kiraan terkumpul —
+          cukup untuk membuka perbualan, tidak cukup untuk membacanya.</p>
+      </section>
+
+      <section class="card">
+        <div class="ch">
+          <h2>Taujihat</h2>
+          <span class="n" id="tj-n"></span>
+        </div>
+        <div class="tj" id="tj"></div>
+        <div class="tj-new">
+          <input id="tj-in" placeholder="Catat taujihat selepas menyapa…">
+          <button id="tj-add">Simpan</button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* =====================================================================
+   Voxel icon set. Emoji broke the concept -- they are round, glossy and
+   come from the system font -- so every glyph here is an 8x8 pixel grid
+   emitted as crisp 1x1 SVG rects, in the app's own palette. 'C' paints
+   with currentColor, which is how the tab icons pick up their active
+   state for free.
+   ===================================================================== */
+const ICONS = {
+  masjid:{p:['#39ff6a'], g:['...11...','..1111..','.1....1.','11111111',
+                            '1......1','1..11..1','1.1111.1','11111111']},
+  panah: {p:['#39ff6a','#0f3b1e','#f0c02a'],
+          g:['..1111..','.1....1.','1..22..1','1.2332.1',
+             '1.2332.1','1..22..1','.1....1.','..1111..']},
+  renang:{p:['#38b3c4'], g:['........','...11...','..1..1..','...11...',
+                            '........','11..11..','..11..11','11..11..']},
+  kuda:  {p:['#c4762f'], g:['..11....','.1111...','11111...','.111111.',
+                            '..111111','..1111..','..11.11.','..1...1.']},
+  kitab: {p:['#e5dcc9'], g:['........','.1....1.','11111111','1..11..1',
+                            '1..11..1','1..11..1','11111111','........']},
+  bola:  {p:['#9fd9b3'], g:['..1111..','.11..11.','1..11..1','1.1111.1',
+                            '1.1111.1','1..11..1','.11..11.','..1111..']},
+  bulan: {p:['#f0c02a'], g:['...111..','..11....','.11.....','.11.....',
+                            '.11.....','.11.....','..11....','...111..']},
+  tasbih:{p:['#38b3c4'], g:['..1111..','.1....1.','1......1','1......1',
+                            '1......1','.1....1.','..1..1..','...11...']},
+  bantu: {p:['#39ff6a','#ff6b7a'],
+          g:['.22..22.','.222222.','..2222..','...22...',
+             '........','.111111.','.111111.','..1111..']},
+  lari:  {p:['#39ff6a'], g:['...11...','...11...','.111111.','...11...',
+                            '..1111..','.11..11.','11....11','........']},
+  rumah: {p:['C'], g:['...11...','..1111..','.111111.','11111111',
+                      '.1....1.','.1.11.1.','.1.11.1.','.111111.']},
+  orang: {p:['C'], g:['..1111..','.111111.','.1.11.1.','.111111.',
+                      '..1111..','.111111.','11111111','11111111']},
+  wajik: {p:['C'], g:['...11...','..1111..','.111111.','11111111',
+                      '11111111','.111111.','..1111..','...11...']},
+  hati:  {p:['C'], g:['........','.11..11.','11111111','11111111',
+                      '.111111.','..1111..','...11...','........']},
+  tenang:{p:['C'], g:['........','.11..11.','..1..1..','..1..1..',
+                      '........','.1....1.','..1111..','........']},
+  gesa:  {p:['C','#f0c02a'], g:['.......2','.11..112','.11..11.','........',
+                                '..1111..','........','........','........']},
+  lena:  {p:['C','#f0c02a'], g:['......22','.....2..','.11..11.','........',
+                                '........','...11...','........','........']},
+  tik:   {p:['C'], g:['........','......11','.....11.','....11..',
+                      '1..11...','.1111...','..11....','........']},
+  tembak:{p:['#39ff6a','#f0c02a'],   /* a crosshair: the concentric target
+                                        shape belongs to `panah` */
+          g:['...11...','...11...','...11...','11122111',
+             '11122111','...11...','...11...','...11...']},
+  hex:   {p:['#f0c02a'], g:['..1111..','.1....1.','1......1','1......1',
+                            '1......1','1......1','.1....1.','..1111..']}
+};
+/* Multiply a hex colour, clamped -- the same per-face brightness split the
+   3D renderer uses: top face lifted, side face dropped. */
+function shade(hex, k){
+  const n = parseInt(hex.slice(1), 16);
+  const ch = [n >> 16 & 255, n >> 8 & 255, n & 255]
+    .map(function(v){ return Math.min(255, Math.round(v * k)); });
+  return 'rgb(' + ch[0] + ',' + ch[1] + ',' + ch[2] + ')';
+}
+const FACE_K = {f:1, t:1.22, r:0.7};     // hex colours: multiply
+const FACE_O = {f:0.9, t:1, r:0.58};     // currentColor: vary opacity instead
+
+function paint(hex, part){
+  if (hex === 'C') return 'fill="currentColor" opacity="' + FACE_O[part] + '"';
+  return 'fill="' + shade(hex, FACE_K[part]) + '"';
+}
+
+/* Baked 3D renders, filled in by bakeIcons() once Three.js and the voxel
+   geometry are ready. A pictorial icon with an entry here is served as that
+   image; chrome marks fall through to the flat vector below. */
+const ICON_IMG = {};
+
+function vi(name, px, flat){
+  const size = px ? ' style="width:' + px + 'px;height:' + px + 'px"' : '';
+  if (!flat && ICON_IMG[name]){
+    return '<img class="vi" src="' + ICON_IMG[name] + '" alt=""' + size + '>';
+  }
+  return viFlat(name, px);
+}
+
+/**
+ * The flat vector fallback: a plain 1x1-rect pixel grid. Used for chrome too
+ * small for a 3D render to survive -- tab marks, mood faces, the tick -- and
+ * as the pre-bake placeholder.
+ */
+function viFlat(name, px){
+  const d = ICONS[name], g = d.g, N = 8;
+  const D = 0;
+  const S = N + D;
+  const at = function(x, y){
+    if (y < 0 || y >= N || x < 0 || x >= N) return null;
+    const c = g[y][x];
+    return c === '.' ? null : d.p[+c - 1];
+  };
+
+  let back = '', front = '';
+  for (let y=0; y<N; y++){
+    for (let x=0; x<N; x++){
+      const c = at(x, y);
+      if (!c) continue;
+      const X = x, Y = y + D;
+      if (D){
+        if (!at(x, y - 1)){               // top face
+          back += '<polygon points="' + X + ',' + Y + ' ' + (X+D) + ',' + (Y-D) +
+                  ' ' + (X+1+D) + ',' + (Y-D) + ' ' + (X+1) + ',' + Y + '" ' +
+                  paint(c, 't') + '/>';
+        }
+        if (!at(x + 1, y)){               // right face
+          back += '<polygon points="' + (X+1) + ',' + Y + ' ' + (X+1+D) + ',' + (Y-D) +
+                  ' ' + (X+1+D) + ',' + (Y+1-D) + ' ' + (X+1) + ',' + (Y+1) + '" ' +
+                  paint(c, 'r') + '/>';
+        }
+      }
+      front += '<rect x="' + X + '" y="' + Y + '" width="1.02" height="1.02" ' +
+               paint(c, 'f') + '/>';
+    }
+  }
+  return '<svg class="vi" viewBox="0 0 ' + S + ' ' + S + '" aria-hidden="true"' +
+         (px ? ' style="width:' + px + 'px;height:' + px + 'px"' : '') + '>' +
+         back + front + '</svg>';
+}
+
+/* =====================================================================
+   The voxel avatar, carried over from the renderer in index.html:
+   chamfered boxes, a painted portrait, world-space voxel UVs, Phong
+   sheen and two raking rim lights.
+   ===================================================================== */
+const NEON_BODY = 0x4dff52, NEON_SOFT = 0xb6ffa8;
+const BEVEL = 0.22, CELL = 1.05, TILE = 4, TILE_W = CELL * TILE;
+
+function voxelTile(){
+  const px = 40, s = TILE * px;
+  const c = document.createElement('canvas'); c.width = c.height = s;
+  const g = c.getContext('2d');
+  for (let y=0;y<TILE;y++) for (let x=0;x<TILE;x++){
+    const cx = x*px + px/2, cy = y*px + px/2, t = 1 - Math.random()*0.05;
+    const L = function(v){ return Math.round(v*t); };
+    const grd = g.createRadialGradient(cx, cy, px*0.08, cx, cy, px*0.78);
+    grd.addColorStop(0, 'rgb(255,255,255)');
+    grd.addColorStop(0.55, 'rgb('+L(246)+','+L(246)+','+L(246)+')');
+    grd.addColorStop(1, 'rgb('+L(207)+','+L(207)+','+L(207)+')');
+    g.fillStyle = grd; g.fillRect(x*px, y*px, px, px);
+    g.fillStyle = 'rgba(0,0,0,.10)';
+    g.fillRect(x*px, (y+1)*px-2, px, 2);
+    g.fillRect((x+1)*px-2, y*px, 2, px);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4;
+  return t;
+}
+function checkTile(){
+  const s = 48, c = document.createElement('canvas'); c.width = c.height = s;
+  const g = c.getContext('2d');
+  g.fillStyle = '#dedbd4'; g.fillRect(0,0,s,s);
+  g.fillStyle = '#35373a';
+  for (let y=0;y<s;y+=8) for (let x=0;x<s;x+=8) if (((x/8)+(y/8))%2===0) g.fillRect(x,y,8,8);
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = t.minFilter = THREE.NearestFilter;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(0.7, 0.7);
+  return t;
+}
+/* Each eye is an L: a brow bar with a descender on its inner edge. */
+function faceTexture(skinHex){
+  const cell = 24, n = 16, s = cell*n;
+  const c = document.createElement('canvas'); c.width = c.height = s;
+  const g = c.getContext('2d');
+  g.fillStyle = '#' + ('000000' + skinHex.toString(16)).slice(-6);
+  g.fillRect(0,0,s,s);
+  for (let y=0;y<n;y++) for (let x=0;x<n;x++){
+    g.fillStyle = 'rgba(255,255,255,'+(0.05+Math.random()*0.05).toFixed(3)+')';
+    g.fillRect(x*cell, y*cell, cell, 2);
+    g.fillRect(x*cell, y*cell, 2, cell);
+  }
+  const px = function(x,y,w,h){ g.fillRect(x*cell, y*cell, w*cell, h*cell); };
+  g.fillStyle = '#171310';
+  px(2.5,5,4,1.1); px(5.4,5,1.1,3.2);
+  px(9.4,5,4,1.1); px(9.4,5,1.1,3.2);
+  g.strokeStyle = '#6b4033'; g.lineWidth = cell*0.42; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(5.9*cell, 10.4*cell);
+  g.quadraticCurveTo(8*cell, 12.0*cell, 10.1*cell, 10.4*cell); g.stroke();
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+}
+const TEX = {vox:voxelTile(), check:checkTile()};
+
+/* A box with its 12 edges and 8 corners cut, cached per size: a scaled
+   unit cube cannot carry a bevel without stretching it into a wedge. */
+const geoCache = {};
+function chamferBox(w, h, d, faceGroup){
+  const key = w.toFixed(2)+'|'+h.toFixed(2)+'|'+d.toFixed(2)+(faceGroup?'|f':'');
+  if (geoCache[key]) return geoCache[key];
+  const X=w/2, Y=h/2, Z=d/2, E=[X,Y,Z];
+  const b = Math.min(BEVEL, X*0.45, Y*0.45, Z*0.45);
+  const vert = function(full, sx, sy, sz){
+    const sg=[sx,sy,sz];
+    return [0,1,2].map(function(a){ return (a===full ? E[a] : E[a]-b) * sg[a]; });
+  };
+  const tris=[];
+  const push=function(p0,p1,p2,face,sign){ tris.push({v:[p0,p1,p2],face:face,sign:sign}); };
+  for (let a=0;a<3;a++) for (let sgn=-1;sgn<=1;sgn+=2){
+    const o=[(a+1)%3,(a+2)%3];
+    const corner=function(i,j){ const sg=[0,0,0]; sg[a]=sgn; sg[o[0]]=i; sg[o[1]]=j;
+      return vert(a,sg[0],sg[1],sg[2]); };
+    const q=[corner(-1,-1),corner(1,-1),corner(1,1),corner(-1,1)];
+    push(q[0],q[1],q[2],a,sgn); push(q[0],q[2],q[3],a,sgn);
+  }
+  for (let a=0;a<3;a++) for (let bx=a+1;bx<3;bx++){
+    const other=3-a-bx;
+    for (let sa=-1;sa<=1;sa+=2) for (let sb=-1;sb<=1;sb+=2){
+      const mk=function(full,so){ const sg=[0,0,0]; sg[a]=sa; sg[bx]=sb; sg[other]=so;
+        return vert(full,sg[0],sg[1],sg[2]); };
+      push(mk(a,-1),mk(a,1),mk(bx,1),null); push(mk(a,-1),mk(bx,1),mk(bx,-1),null);
+    }
+  }
+  for (let sx=-1;sx<=1;sx+=2) for (let sy=-1;sy<=1;sy+=2) for (let sz=-1;sz<=1;sz+=2)
+    push(vert(0,sx,sy,sz), vert(1,sx,sy,sz), vert(2,sx,sy,sz), null);
+
+  const isFront=function(t){ return faceGroup && t.face===2 && t.sign===1; };
+  const ordered = tris.filter(function(t){ return !isFront(t); }).concat(tris.filter(isFront));
+  const pos=[], nor=[], uv=[];
+  ordered.forEach(function(t){
+    const p=t.v;
+    let n=[
+      (p[1][1]-p[0][1])*(p[2][2]-p[0][2]) - (p[1][2]-p[0][2])*(p[2][1]-p[0][1]),
+      (p[1][2]-p[0][2])*(p[2][0]-p[0][0]) - (p[1][0]-p[0][0])*(p[2][2]-p[0][2]),
+      (p[1][0]-p[0][0])*(p[2][1]-p[0][1]) - (p[1][1]-p[0][1])*(p[2][0]-p[0][0])
+    ];
+    const cen=[0,1,2].map(function(i){ return (p[0][i]+p[1][i]+p[2][i])/3; });
+    const order=(n[0]*cen[0]+n[1]*cen[1]+n[2]*cen[2])<0 ? [0,2,1] : [0,1,2];
+    if (order[1]===2) n=[-n[0],-n[1],-n[2]];
+    const len=Math.hypot(n[0],n[1],n[2])||1; n=[n[0]/len,n[1]/len,n[2]/len];
+    const ax = Math.abs(n[0])>=Math.abs(n[1]) && Math.abs(n[0])>=Math.abs(n[2]) ? 0
+             : Math.abs(n[1])>=Math.abs(n[2]) ? 1 : 2;
+    const front=isFront(t);
+    order.forEach(function(k){
+      const q=p[k];
+      pos.push(q[0],q[1],q[2]); nor.push(n[0],n[1],n[2]);
+      if (front) uv.push((q[0]+X)/w, (q[1]+Y)/h);
+      else if (ax===0) uv.push(q[2]/TILE_W, q[1]/TILE_W);
+      else if (ax===1) uv.push(q[0]/TILE_W, q[2]/TILE_W);
+      else uv.push(q[0]/TILE_W, q[1]/TILE_W);
+    });
+  });
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('normal',   new THREE.Float32BufferAttribute(nor,3));
+  g.setAttribute('uv',       new THREE.Float32BufferAttribute(uv,2));
+  if (faceGroup){ const n=ordered.length*3; g.addGroup(0,n-6,0); g.addGroup(n-6,6,1); }
+  geoCache[key]=g; return g;
+}
+
+function mat(color, o){
+  o = o || {};
+  const hard = o.shine === 'hard';
+  return new THREE.MeshPhongMaterial({
+    color: color,
+    map: o.map === null ? null : (o.map || TEX.vox),
+    specular: hard ? 0x5d6b5f : 0x22271f,
+    shininess: hard ? 34 : 11,
+    emissive: o.emissive !== undefined ? o.emissive : 0x000000,
+    emissiveIntensity: o.ei !== undefined ? o.ei : 1
+  });
+}
+function box(parent, o){
+  const m = new THREE.Mesh(chamferBox(o.w, o.h, o.d, Array.isArray(o.material)), o.material);
+  m.position.set(o.x||0, o.y||0, o.z||0);
+  if (o.rz) m.rotation.z = o.rz;
+  parent.add(m);
+  return m;
+}
+
+/* ---- body metrics, same skeleton as the renderer ---- */
+const P = {
+  footW:3.3, footH:1.7, footD:4.6, footZ:0.6, footY:0.85,
+  shinW:2.6, shinH:7.4, shinD:2.6, shinY:5.2,
+  thighW:3.0, thighH:8.0, thighD:3.0, thighY:12.9,
+  pelvisW:6.6, pelvisH:2.7, pelvisD:3.8, pelvisY:18.25,
+  torsoW:6.6, torsoH:7.4, torsoD:3.8, torsoY:23.3,
+  headW:8.0, headH:8.0, headD:8.0, headY:32.4,
+  uArmW:2.2, uArmH:6.0, uArmD:2.4, uArmY:24.0,
+  lArmW:2.0, lArmH:5.4, lArmD:2.2, lArmY:18.3,
+  handW:2.9, handH:2.6, handD:3.0, handY:14.4,
+  legX:1.75, armX:4.75, shoulderY:27.0
+};
+const PAD = 0.5;
+const SKIN = 0xf0aa6d, HAIR = 0x222221;
+
+const RANKS = [
+  {rank:1, name:'Anak Dagang', scale:0.77, shirt:0xa85c22, trim:0xc4762f,
+   sarung:0xe5dcc9, sarungLong:true, pants:0x6f4523, sandals:true, buttons:0xf0c02a,
+   headwear:'none', prop:null, neon:0},
+  {rank:2, name:'Perantau', scale:0.88, shirt:0x1a8798, trim:0x38b3c4,
+   sarung:null, pants:0x2b3a52, sandals:true, pack:true,
+   headwear:'none', prop:null, neon:0},
+  {rank:3, name:'Pendekar Muda', scale:0.92, shirt:0x1d2022, trim:0x2f4036,
+   sarung:'check', sarungLong:true, pants:0x111416, sandals:true, buttons:0x6ddb3a,
+   headwear:'songkok', prop:'baton', neon:0},
+  {rank:4, name:'Pahlawan Siber', scale:1.00, shirt:0x0e1312, trim:0x18221d,
+   sarung:0x0c100f, pants:0x0a0d0c, sandals:false, collar:0xe9eef0,
+   headwear:'tanijak', prop:'keris', neon:1},
+  {rank:5, name:'Adiguru', scale:1.18, shirt:0x080c0a, trim:0x0e1712,
+   sarung:0x080c0a, pants:0x060908, sandals:false,
+   headwear:'tanijak', prop:'keris', neon:2}
+];
+const EMIT = {1:{trace:0.26, plate:0.34, blade:0.58, amt:0.16},
+              2:{trace:0.85, plate:0.82, blade:1.10, amt:0.32}};
+
+function buildChar(cfg){
+  const g = new THREE.Group();
+  g.scale.setScalar(cfg.scale);
+  const pulse = [];
+  const lvl = cfg.neon;
+  const skin = mat(SKIN), hair = mat(HAIR), shirt = mat(cfg.shirt), trim = mat(cfg.trim);
+  const pants = mat(cfg.pants);
+  const plate = lvl ? mat(lvl===2?0x0b2c15:0x0a1a0f,
+      {emissive:NEON_BODY, ei:EMIT[lvl].plate, map:null, shine:'hard'}) : null;
+  if (plate) pulse.push({m:plate, base:EMIT[lvl].plate, amt:EMIT[lvl].amt});
+
+  [-1,1].forEach(function(s){
+    const x = s*P.legX;
+    box(g, {w:P.shinW+PAD, h:P.shinH+0.2, d:P.shinD+PAD, x:x, y:P.shinY+0.3, material:pants});
+    box(g, {w:P.thighW+PAD, h:P.thighH, d:P.thighD+PAD, x:x, y:P.thighY, material:pants});
+    if (cfg.sandals){
+      box(g, {w:P.footW-0.4, h:1.1, d:P.footD-0.4, x:x, y:1.05, z:P.footZ, material:skin});
+      box(g, {w:P.footW, h:0.55, d:P.footD, x:x, y:0.28, z:P.footZ, material:mat(0xdcae74)});
+      box(g, {w:P.footW, h:0.4, d:1.1, x:x, y:1.35, z:P.footZ-1.5, material:mat(0xb98452)});
+    } else {
+      box(g, {w:P.footW+0.6, h:P.footH+0.8, d:P.footD+0.5, x:x, y:P.footY+0.4, z:P.footZ,
+              material:mat(0x0a0e0c)});
+      box(g, {w:P.footW+0.5, h:0.5, d:1.5, x:x, y:P.footY+1.3, z:P.footZ+1.4, material:plate});
+      box(g, {w:1.5, h:1.5, d:0.5, x:x, y:P.shinY+1.2, z:(P.shinD+PAD)/2+0.2, material:plate});
+    }
+  });
+
+  box(g, {w:P.torsoW, h:P.torsoH, d:P.torsoD, y:P.torsoY, material:skin});
+  const sarungH = cfg.sarungLong ? 9.4 : 5.4;
+  const sarungY = P.pelvisY + P.pelvisH/2 - sarungH/2;
+  const sarungMat = cfg.sarung === 'check' ? mat(0xffffff, {map:TEX.check})
+                  : cfg.sarung === null ? null : mat(cfg.sarung);
+  if (sarungMat) box(g, {w:P.pelvisW+PAD+0.7, h:sarungH, d:P.pelvisD+PAD+0.7, y:sarungY, material:sarungMat});
+  else box(g, {w:P.pelvisW+PAD, h:4.2, d:P.pelvisD+PAD, y:P.pelvisY-0.4, material:pants});
+  const beltY = P.pelvisY + P.pelvisH/2 - 0.35;
+  box(g, {w:P.pelvisW+PAD+1.0, h:lvl?0.8:1.1, d:P.pelvisD+PAD+1.0, y:beltY, material:lvl?plate:trim});
+  if (lvl) box(g, {w:1.9, h:1.5, d:0.6, y:beltY, z:(P.pelvisD+PAD+1.0)/2+0.2, material:plate});
+
+  box(g, {w:P.torsoW+PAD, h:P.torsoH+0.4, d:P.torsoD+PAD, y:P.torsoY-0.1, material:shirt});
+  box(g, {w:P.torsoW+PAD+0.2, h:1.0, d:P.torsoD+PAD+0.2, y:P.torsoY-P.torsoH/2-0.2, material:trim});
+  if (cfg.collar) box(g, {w:2.6, h:1.1, d:0.5, y:P.torsoY+P.torsoH/2-0.25,
+                          z:P.torsoD/2+PAD/2-0.1, material:mat(cfg.collar)});
+  box(g, {w:3.7, h:1.2, d:P.headD*0.36, y:P.torsoY+P.torsoH/2+0.4, material:trim});
+  box(g, {w:0.9, h:P.torsoH*0.76, d:0.35, y:P.torsoY+0.4, z:P.torsoD/2+PAD/2+0.12,
+          material:lvl?plate:trim});
+  if (cfg.buttons){
+    const btn = mat(cfg.buttons);
+    [1.5, 0.25].forEach(function(dy){
+      box(g, {w:0.6, h:0.6, d:0.3, y:P.torsoY+dy, z:P.torsoD/2+PAD/2+0.34, material:btn});
+    });
+  }
+  if (lvl) box(g, {w:1.6, h:1.6, d:0.5, y:P.torsoY+2.5, z:P.torsoD/2+PAD/2+0.16, material:plate});
+  box(g, {w:2.6, h:1.4, d:2.6, y:27.7, material:skin});
+
+  if (cfg.pack){
+    const zB = -(P.torsoD/2+1.9);
+    box(g, {w:5.6, h:7.4, d:3.0, y:P.torsoY+0.2, z:zB, material:mat(0x14181c)});
+    box(g, {w:5.8, h:1.5, d:3.2, y:P.torsoY+3.5, z:zB, material:mat(0x1b5d76)});
+    [-1,1].forEach(function(s){
+      box(g, {w:0.8, h:8.7, d:0.7, x:s*2.3, y:P.torsoY, z:P.torsoD/2+PAD/2+0.25, material:mat(0x1b5d76)});
+    });
+  }
+
+  /* head: the portrait rides the +z face group alone */
+  const head = new THREE.Group();
+  head.position.y = P.headY;
+  g.add(head);
+  const faceMat = new THREE.MeshPhongMaterial({color:0xffffff, map:faceTexture(SKIN),
+                                               specular:0x22271f, shininess:11});
+  box(head, {w:P.headW, h:P.headH, d:P.headD, material:[skin, faceMat]});
+  [-1,1].forEach(function(s){
+    box(head, {w:0.5, h:2.0, d:1.5, x:s*(P.headW/2+0.22), y:-0.2, z:-0.3, material:skin});
+  });
+  const hz = P.headD/2, hx = P.headW/2, cell = (P.headW+0.4)/4;
+  box(head, {w:P.headW+0.24, h:P.headH*0.74, d:1.1, y:0.5, z:-(hz+0.3), material:hair});
+  if (cfg.headwear === 'none'){
+    box(head, {w:P.headW+0.26, h:0.7, d:P.headD+0.24, y:P.headH/2+0.2, material:hair});
+    [[1,2,2,1],[1,2,2,2],[1,1,2,1],[1,1,1,1]].forEach(function(row, r){
+      row.forEach(function(v, q){
+        const h = 0.7 + v*0.72;
+        box(head, {w:cell+0.1, h:h, d:cell+0.1, x:(q-1.5)*cell,
+                   y:P.headH/2-0.3+h/2, z:(1.5-r)*cell-0.3, material:hair});
+      });
+    });
+    [-1.5,-0.5,0.5,1.5].forEach(function(q, i){
+      const drop = (i===0||i===3) ? 2.4 : 1.1;
+      box(head, {w:cell+0.1, h:drop, d:1.1, x:q*cell, y:P.headH/2-drop/2+0.1, z:hz+0.1, material:hair});
+    });
+    [-1,1].forEach(function(s){
+      box(head, {w:0.55, h:2.8, d:P.headD+0.2, x:s*(hx+0.38), y:P.headH/2-2.0, material:hair});
+    });
+  } else {
+    box(head, {w:P.headW+0.24, h:0.9, d:P.headD+0.24, y:P.headH/2-0.3, material:hair});
+  }
+  if (cfg.headwear === 'songkok'){
+    const felt = mat(0x13150f);
+    box(g, {w:P.headW+0.5, h:2.6, d:P.headD+0.5, y:P.headY+P.headH/2+1.1, material:felt});
+    box(g, {w:P.headW+0.15, h:0.45, d:P.headD+0.15, y:P.headY+P.headH/2+2.6, material:felt});
+  }
+  if (cfg.headwear === 'tanijak'){
+    const cloth = mat(lvl===2?0x0a1310:0x0d1311);
+    const trace = mat(lvl===2?0x0b2c15:0x0a1a0f,
+        {emissive:NEON_BODY, ei:lvl===2?0.95:0.30, map:null, shine:'hard'});
+    pulse.push({m:trace, base:lvl===2?0.95:0.30, amt:EMIT[lvl].amt});
+    const base = P.headY + P.headH/2;
+    box(g, {w:P.headW+0.8, h:1.9, d:P.headD+0.8, y:base+0.85, material:cloth});
+    box(g, {w:P.headW+0.9, h:0.26, d:P.headD+0.9, y:base+1.70, material:trace});
+    box(g, {w:P.headW+0.5, h:2.0, d:P.headD+0.5, y:base+2.70, material:cloth});
+    box(g, {w:5.0, h:1.8, d:0.7, y:base+2.6, z:P.headD/2+0.42, material:cloth});
+    box(g, {w:1.5, h:1.5, d:0.3, y:base+2.6, z:P.headD/2+0.80, rz:0.79, material:trace});
+    const capTop = base + 3.70;
+    [[4.4, lvl===2?4.2:3.5, 3.8, -0.8, 0.66], [3.3, lvl===2?2.7:2.3, 3.2, 2.0, -0.78]]
+      .forEach(function(f){
+        const half = f[1]/2;
+        const x = f[3] - half*Math.sin(f[4]);
+        const y = capTop - 1.15 + half*Math.cos(f[4]);
+        box(g, {w:f[0], h:f[1], d:f[2], x:x, y:y, rz:f[4], material:cloth});
+        box(g, {w:f[0]*0.16, h:f[1]*0.78, d:0.3, x:x, y:y, z:f[2]/2+0.1, rz:f[4], material:trace});
+      });
+    if (lvl === 2){
+      const spark = mat(0x2a7a33, {emissive:NEON_SOFT, ei:0.85, map:null, shine:'hard'});
+      pulse.push({m:spark, base:0.85, amt:0.5});
+      const sg = new THREE.Group(); sg.position.y = base + 6.4;
+      for (let i=0;i<7;i++){
+        const m = box(sg, {w:0.32, h:0.32, d:0.32, material:spark});
+        m.userData.r = 3.4 + (i%3)*1.1;
+        m.userData.y = ((i*7)%5)*1.1 - 1.6;
+        m.userData.a = i*0.9;
+      }
+      g.add(sg);
+      g.userData.sparks = sg;
+    }
+  }
+
+  /* arms on shoulder pivots, so a held prop sways with them */
+  const arms = [];
+  [-1,1].forEach(function(s){
+    const arm = new THREE.Group();
+    arm.position.set(s*P.armX, P.shoulderY, 0);
+    arm.userData.baseX = cfg.rank === 1 ? -0.42 : 0;
+    arm.userData.baseZ = (cfg.rank === 1 ? 0.23 : 0.03) * -s;
+    g.add(arm); arms.push(arm);
+    const rel = function(y){ return y - P.shoulderY; };
+    box(arm, {w:P.uArmW+PAD, h:P.uArmH+0.3, d:P.uArmD+PAD, y:rel(P.uArmY)-0.1, material:shirt});
+    box(arm, {w:P.lArmW+PAD, h:P.lArmH, d:P.lArmD+PAD, y:rel(P.lArmY), material:shirt});
+    box(arm, {w:P.lArmW+PAD+0.2, h:0.5, d:P.lArmD+PAD+0.2, y:rel(P.lArmY)-P.lArmH/2, material:trim});
+    box(arm, {w:P.handW, h:P.handH, d:P.handD, y:rel(P.handY),
+              material: lvl ? mat(0x0b100d) : skin});
+    if (lvl){
+      box(arm, {w:P.handW+0.4, h:0.42, d:P.handD+0.4, y:rel(P.handY)+P.handH/2, material:plate});
+      box(arm, {w:P.lArmW+PAD+0.3, h:0.6, d:P.lArmD+PAD+0.3, y:rel(P.lArmY)+1.9, material:plate});
+    }
+  });
+
+  const right = arms[1];
+  if (cfg.prop === 'baton'){
+    const p = new THREE.Group();
+    p.position.set(1.3, P.handY-P.shoulderY+0.2, 2.1);
+    p.rotation.z = 0.3; p.rotation.x = -0.34;
+    box(p, {w:1.1, h:7.6, d:1.1, material:mat(0x8a5f39)});
+    box(p, {w:1.25, h:1.0, d:1.25, y:1.6, material:mat(0x3c6b44)});
+    right.add(p);
+  } else if (cfg.prop === 'keris'){
+    const p = new THREE.Group();
+    p.position.set(1.8, P.handY-P.shoulderY+0.4, 2.3);
+    p.rotation.z = -0.24; p.rotation.x = -0.14;
+    const blade = mat(lvl===2?0x0b2c15:0x0a1a0f,
+        {emissive:NEON_BODY, ei:EMIT[lvl].blade, map:null, shine:'hard'});
+    const core = mat(lvl===2?0x9dffa0:0x336b34,
+        {emissive:NEON_SOFT, ei:lvl===2?1.5:0.6, map:null, shine:'hard'});
+    pulse.push({m:blade, base:EMIT[lvl].blade, amt:EMIT[lvl].amt});
+    pulse.push({m:core, base:lvl===2?1.5:0.6, amt:EMIT[lvl].amt});
+    box(p, {w:1.5, h:3.3, d:1.5, y:-1.9, rz:0.2, material:mat(lvl===2?0x123021:0x1b1f1d)});
+    box(p, {w:4.2, h:1.0, d:2.2, y:0.5, material:blade});
+    for (let i=0;i<8;i++){
+      const t=i/7, w=2.0-t*1.45, x=Math.sin(i*0.85)*0.3, y=1.7+i*1.3, rz=Math.sin(i*0.85)*0.07;
+      box(p, {w:w, h:1.5, d:0.7-t*0.28, x:x, y:y, rz:rz, material:blade});
+      box(p, {w:w*0.34, h:1.5, d:0.8-t*0.3, x:x, y:y, rz:rz, material:core});
+    }
+    right.add(p);
+  }
+
+  g.userData.pulse = pulse;
+  g.userData.arms = arms;
+  g.userData.head = head;
+  g.userData.neon = lvl;
+  return g;
+}
+
+/* =====================================================================
+   Icons as real geometry
+   Each filled pixel of a grid becomes an actual chamfered cube. The cubes
+   of one colour are merged into a single BufferGeometry so a badge costs
+   one or two draw calls instead of thirty.
+   ===================================================================== */
+const ICON_CUBE   = 1.14;                 // >1 so cubes on the 1-unit lattice overlap
+const ICON_CUBE_D = 1.9;                  // depth: a slab, not a plate
+
+function mergeCubes(offsets){
+  const base = chamferBox(ICON_CUBE, ICON_CUBE, ICON_CUBE_D);
+  const bp = base.attributes.position.array;
+  const bn = base.attributes.normal.array;
+  const n = bp.length;
+  const pos = new Float32Array(n * offsets.length);
+  const nor = new Float32Array(n * offsets.length);
+  offsets.forEach(function(o, i){
+    const at = i * n;
+    for (let k=0; k<n; k+=3){
+      pos[at + k]     = bp[k]     + o[0];
+      pos[at + k + 1] = bp[k + 1] + o[1];
+      pos[at + k + 2] = bp[k + 2];
+    }
+    nor.set(bn, at);
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal',   new THREE.Float32BufferAttribute(nor, 3));
+  return g;
+}
+
+const iconMats = {};
+function iconMat(hex){
+  if (!iconMats[hex]){
+    iconMats[hex] = new THREE.MeshPhongMaterial({
+      color: hex, specular: 0x5d6b5f, shininess: 30
+    });
+  }
+  return iconMats[hex];
+}
+
+const iconGroups = {};
+function iconGroup(name){
+  if (iconGroups[name]) return iconGroups[name].clone();
+  const d = ICONS[name], byColour = {};
+  d.g.forEach(function(row, y){
+    for (let x=0; x<row.length; x++){
+      const c = row[x];
+      if (c === '.') continue;
+      const hex = d.p[+c - 1];
+      if (hex === 'C') continue;          // chrome marks are not baked
+      (byColour[hex] = byColour[hex] || []).push([x - 3.5, 3.5 - y]);
+    }
+  });
+  const g = new THREE.Group();
+  Object.keys(byColour).forEach(function(hex){
+    g.add(new THREE.Mesh(mergeCubes(byColour[hex]), iconMat(hex)));
+  });
+  iconGroups[name] = g;
+  return g.clone();
+}
+
+/* Render each pictorial icon once, off-screen, at a three-quarter angle, and
+   keep the PNG. Live 3D per list icon would mean a render pass and a bounding
+   rect for every one of them, every frame, inside scrolling cards -- so the
+   list icons are real 3D renders held still, and only the badges beside the
+   avatar are live. */
+const BAKED = ['masjid','panah','renang','kuda','kitab','bola',
+               'bulan','tasbih','bantu','lari','tembak'];
+
+function bakeIcons(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 192;
+  const r = new THREE.WebGLRenderer({canvas:c, antialias:true, alpha:true,
+                                     preserveDrawingBuffer:true});
+  r.setClearColor(0x000000, 0);
+  const sc = new THREE.Scene();
+  sc.add(new THREE.AmbientLight(0x3a443c, 0.75));
+  sc.add(new THREE.HemisphereLight(0x5a8a6c, 0x0b1a10, 0.45));
+  const k = new THREE.DirectionalLight(0xfff4e4, 0.95); k.position.set(-30,44,58); sc.add(k);
+  const r1 = new THREE.DirectionalLight(0x86ffa4, 0.32); r1.position.set(40,22,-46); sc.add(r1);
+  const r2 = new THREE.DirectionalLight(0xffd7a8, 0.24); r2.position.set(-44,18,-40); sc.add(r2);
+  const cam = new THREE.OrthographicCamera(-5.9, 5.9, 5.9, -5.9, 0.1, 200);
+  cam.position.set(0, 0, 60);
+  cam.lookAt(0, 0, 0);
+
+  BAKED.forEach(function(name){
+    const g = iconGroup(name);
+    g.rotation.set(0.20, -0.52, 0);
+    sc.add(g);
+    r.render(sc, cam);
+    ICON_IMG[name] = c.toDataURL('image/png');
+    sc.remove(g);
+  });
+  r.dispose();
+}
+
+
+/* =====================================================================
+   The halaqah. One murabbi, one halaqah of twelve -- so the landing
+   screen is the triage list, not a summary of summaries. A murabbi who
+   holds several halaqah needs one level above this.
+
+   The per-day series are generated from a seeded PRNG rather than typed
+   out: 12 people x 28 days x 5 amal is 1,680 numbers, and inventing them
+   by hand would make them look invented. Each mutarabbi carries a
+   `consist` (how reliably they tick) and a `drift` (which way they are
+   heading), and the generator honours both.
+   ===================================================================== */
+const AMAL_ROWS = [
+  {ic:'masjid', nm:'Subuh jemaah'},
+  {ic:'kitab',  nm:'Tilawah'},
+  {ic:'bulan',  nm:'Rawatib'},
+  {ic:'lari',   nm:'Fizikal'},
+  {ic:'bantu',  nm:'Khidmat'}
+];
+const SOLAT_ROWS = ['Subuh', 'Zohor', 'Asar'];
+/* blue sits between green and amber -- the pair a red-green colourblind
+   reader confuses -- so the two never share an edge, and the green is
+   stepped dark enough that they separate by lightness even when compared
+   across the chart. Validated all-pairs; the 2.93:1 contrast of the
+   green against the card is why every segment is labelled and a table
+   view exists. */
+const MOOD_ROWS = [
+  {k:'tenang', nm:'Tenang',    css:'--c-tenang'},
+  {k:'lena',   nm:'Mengantuk', css:'--c-lena'},
+  {k:'gesa',   nm:'Tergesa',   css:'--c-gesa'}
+];
+
+function rng(seed){
+  let s = seed >>> 0;
+  return function(){ s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+const PEOPLE = [
+  {nm:'Ahmad Zulhilmi',      r:4, consist:.86, drift:+0.6, silence:0, seed:1207},
+  {nm:'Muhammad Irfan',      r:3, consist:.81, drift:-2.4, silence:0, seed:3311},
+  {nm:'Nurhakim Danial',     r:2, consist:.44, drift:-3.1, silence:4, seed:509},
+  {nm:'Aiman Syafiq',        r:1, consist:.38, drift:+2.8, silence:1, seed:8821},
+  {nm:'Haziq Mustaqim',      r:5, consist:.93, drift:+0.2, silence:0, seed:4104},
+  {nm:'Amir Hamzah',         r:3, consist:.72, drift:+0.4, silence:0, seed:667},
+  {nm:'Luqman Hakimi',       r:2, consist:.63, drift:-0.5, silence:0, seed:2290},
+  {nm:'Firdaus Ariff',       r:2, consist:.51, drift:-0.8, silence:6, seed:7715},
+  {nm:'Zaid Hariz',          r:1, consist:.47, drift:+1.1, silence:2, seed:1583},
+  {nm:'Ridzwan Nasrullah',   r:4, consist:.88, drift:+1.4, silence:0, seed:9042},
+  {nm:'Syed Umair',          r:3, consist:.69, drift:-0.3, silence:1, seed:3756},
+  {nm:'Khairul Anwar',       r:2, consist:.58, drift:+3.4, silence:0, seed:6128}
+];
+
+/* hydrate: 12-week Nur Amanah trend, 28x5 mutabaah grid, 28-day
+   muhasabah tallies per prayer */
+PEOPLE.forEach(function(p, idx){
+  const R = rng(p.seed);
+  const base = 34 + p.consist * 52;
+
+  p.trend = [];
+  for (let w = 0; w < 12; w++){
+    const v = base + p.drift * (w - 5.5) * 0.9 + (R() - 0.5) * 7;
+    p.trend.push(Math.max(8, Math.min(99, Math.round(v))));
+  }
+  p.amanah = p.trend[11];
+
+  /* mutabaah: level 0..4. `consist` sets the chance of a tick at all;
+     the drift tilts the recent days. */
+  p.grid = AMAL_ROWS.map(function(_, a){
+    const pull = 0.82 + a * 0.05;               // later amal are harder
+    const row = [];
+    for (let d = 0; d < 28; d++){
+      const recency = (d - 13.5) / 13.5;        // -1 .. +1
+      const chance = p.consist / pull + p.drift * 0.02 * recency;
+      row.push(R() < chance ? 1 + Math.floor(R() * 4) : 0);
+    }
+    return row;
+  });
+
+  /* muhasabah tallies. `rush` is the one signal that is a *pattern*, not
+     a level -- Asar is the prayer that gets squeezed by work. */
+  p.moods = SOLAT_ROWS.map(function(_, s){
+    const n = 28;
+    const rush = (s === 2 ? 0.34 : 0.13) + (1 - p.consist) * 0.3
+               + (p.seed % 7 === 4 && s === 2 ? 0.22 : 0);
+    const doze = (s === 0 ? 0.24 : 0.07) + (1 - p.consist) * 0.14;
+    const g = Math.round(n * Math.min(0.72, rush));
+    const l = Math.round(n * Math.min(0.5, doze));
+    return {tenang: n - g - l, gesa: g, lena: l};
+  });
+
+  p.taujihat = idx === 1
+    ? [{d:'12 HARI LALU', t:'Berbual tentang jadual kerja syif malam. Dia sendiri yang bangkitkan Asar.'},
+       {d:'5 MINGGU LALU', t:'Sasaran dia: Subuh berjemaah 4 kali seminggu. Bukan saya yang letak.'}]
+    : [{d:'3 MINGGU LALU', t:'Sapa ringkas selepas halaqah. Tiada hal yang dibangkitkan.'}];
+});
+
+/* silence is literal: no entries means empty cells, so the heatmap and
+   the trend must not quietly invent activity for those days. */
+PEOPLE.forEach(function(p){
+  for (let d = 28 - p.silence; d < 28; d++)
+    p.grid.forEach(function(row){ row[d] = 0; });
+});
+
+/* =====================================================================
+   Triage. Surfaced by *change*, never by level -- that is the whole
+   design. Four reasons, each with its own colour and its own sentence,
+   and one of them is good news.
+   ===================================================================== */
+function last7(p, a){ return p.grid[a].slice(21).filter(function(v){ return v; }).length; }
+function mutabaah7(p){
+  let n = 0;
+  p.grid.forEach(function(row){ row.slice(21).forEach(function(v){ if (v) n++; }); });
+  return n / (5 * 7);
+}
+
+function reasons(p){
+  const out = [];
+  const dw = p.trend[11] - p.trend[9];              // last two weeks
+
+  if (p.silence >= 3) out.push({
+    kind:'senyap', cls:'c-senyap', tag:'SENYAP', w:100 + p.silence,
+    why:'Tiada catatan ' + p.silence + ' hari. Bukan tentang amal — tentang dia.'
+  });
+
+  if (dw <= -5) out.push({
+    kind:'turun', cls:'c-sapa', tag:'TURUN', w:60 + Math.abs(dw),
+    why:'Nur Amanah turun ' + Math.abs(dw) + ' mata dalam dua minggu, daripada '
+        + p.trend[9] + ' ke ' + p.trend[11] + '.'
+  });
+
+  /* the reflection pattern: one prayer, reported rushed again and again.
+     A level tells you nothing here; the repetition is the signal. */
+  let worst = 0;
+  p.moods.forEach(function(m, s){ if (m.gesa > p.moods[worst].gesa) worst = s; });
+  if (p.moods[worst].gesa >= 18) out.push({
+    kind:'isyarat', cls:'c-sapa', tag:'ISYARAT', w:55 + p.moods[worst].gesa,
+    why:'Solat ' + SOLAT_ROWS[worst] + ' dilaporkan tergesa '
+        + p.moods[worst].gesa + ' daripada 28 hari. Satu pola, bukan satu hari.'
+  });
+
+  if (dw >= 5) out.push({
+    kind:'naik', cls:'c-naik', tag:'NAIK', w:40 + dw,
+    why:'Naik ' + dw + ' mata dalam dua minggu. Ini untuk diiktiraf, bukan diperbaiki.'
+  });
+
+  return out;
+}
+
+PEOPLE.forEach(function(p){
+  p.reasons = reasons(p);
+  p.top = p.reasons.slice().sort(function(a, b){ return b.w - a.w; })[0] || null;
+});
+const FLAGGED = PEOPLE.filter(function(p){ return p.top; })
+  .sort(function(a, b){ return b.top.w - a.top.w; });
+/* Five is the cap, and the cap is the design. A murabbi has ten minutes
+   before halaqah; a list of nine is the roster with extra steps, and a
+   roster is exactly the thing this screen refuses to be. Whoever is cut
+   is not dropped -- they are rolled into the halaqah topic below, which
+   is where a pattern shared by half the group actually belongs. */
+const TRIAGE = FLAGGED.slice(0, 5);
+const SPILL = FLAGGED.slice(5);
+
+/* =====================================================================
+   Voxel busts. The mutarabbi sees this figure in their own app; the
+   murabbi must see the same one, or the dashboard becomes a spreadsheet
+   about strangers. Five ranks, so five offscreen renders at boot, kept
+   as PNGs -- a live pass per list row inside a scrolling card is not
+   affordable, and the list never needs one.
+   ===================================================================== */
+const BUST = [];
+function bakeBusts(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 220;
+  const r = new THREE.WebGLRenderer({canvas:c, antialias:true, alpha:true,
+                                     preserveDrawingBuffer:true});
+  r.setClearColor(0x000000, 0);
+  const sc = new THREE.Scene();
+  sc.add(new THREE.AmbientLight(0x2e3630, 0.7));
+  sc.add(new THREE.HemisphereLight(0x477055, 0x05130b, 0.4));
+  const k = new THREE.DirectionalLight(0xfff4e4, 0.95); k.position.set(-32,48,60); sc.add(k);
+  const r1 = new THREE.DirectionalLight(0x86ffa4, 0.3); r1.position.set(42,26,-50); sc.add(r1);
+  const r2 = new THREE.DirectionalLight(0xffd7a8, 0.24); r2.position.set(-46,22,-44); sc.add(r2);
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.5, 400);
+
+  RANKS.forEach(function(cfg, i){
+    const g = buildChar(cfg);
+    g.rotation.y = -0.34;
+    /* frame the head and shoulders, and follow the rank's own scale so
+       rank 5 is not cropped tighter than rank 1 */
+    const y = 30.5 * cfg.scale;
+    cam.position.set(4.6 * cfg.scale, y + 1.2, 25 * cfg.scale);
+    cam.lookAt(0, y, 0);
+    sc.add(g);
+    r.render(sc, cam);
+    BUST[i] = c.toDataURL('image/png');
+    sc.remove(g);
+  });
+  r.dispose();
+}
+
+/* =====================================================================
+   The one live scene: the selected mutarabbi's avatar, scissored to its
+   slot in the panel.
+   ===================================================================== */
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0);
+renderer.autoClear = false;
+
+const scene = new THREE.Scene();
+scene.add(new THREE.AmbientLight(0x2e3630, 0.66));
+scene.add(new THREE.HemisphereLight(0x477055, 0x05130b, 0.38));
+const key = new THREE.DirectionalLight(0xfff4e4, 0.92); key.position.set(-38,52,66); scene.add(key);
+const rimA = new THREE.DirectionalLight(0x86ffa4, 0.26); rimA.position.set(46,30,-58); scene.add(rimA);
+const rimB = new THREE.DirectionalLight(0xffd7a8, 0.26); rimB.position.set(-52,26,-50); scene.add(rimB);
+const lamp = new THREE.PointLight(0xb6ffcf, 0.75, 78, 2); lamp.position.set(0,46,12); scene.add(lamp);
+
+const cam = new THREE.PerspectiveCamera(32, 1, 0.5, 400);
+const slotEl = document.getElementById('slot-mentee');
+let avatar = null, avScale = 1;
+
+function setAvatar(r){
+  if (avatar) scene.remove(avatar);
+  const cfg = RANKS[r - 1];
+  avatar = buildChar(cfg);
+  avScale = cfg.scale;
+  scene.add(avatar);
+}
+
+function resize(){
+  /* setSize must be allowed to write style.width/height: a canvas is a
+     replaced element, so with width:auto CSS resolves to its *intrinsic*
+     width -- the drawing buffer, viewport x devicePixelRatio -- not the
+     inset:0 box, and on a 2x display everything draws at double scale. */
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+addEventListener('resize', resize);
+resize();
+
+let spin = -0.3, drag = null;
+slotEl.style.pointerEvents = 'auto';
+slotEl.addEventListener('pointerdown', function(e){
+  drag = {x:e.clientX, start:spin}; slotEl.setPointerCapture(e.pointerId);
+});
+slotEl.addEventListener('pointermove', function(e){
+  if (drag) spin = drag.start + (e.clientX - drag.x) * 0.012;
+});
+slotEl.addEventListener('pointerup', function(){ drag = null; });
+
+const clock = new THREE.Clock();
+function frame(){
+  requestAnimationFrame(frame);
+  const t = clock.getElapsedTime();
+  const W = window.innerWidth, H = window.innerHeight;
+
+  if (avatar){
+    avatar.position.y = Math.sin(t * 1.2) * 0.34;
+    avatar.rotation.y = spin + (drag ? 0 : Math.sin(t * 0.28) * 0.08);
+    avatar.userData.arms.forEach(function(arm, i){
+      arm.rotation.x = arm.userData.baseX + Math.sin(t * 1.2 + (i ? Math.PI : 0)) * 0.05;
+      arm.rotation.z = arm.userData.baseZ + Math.sin(t * 0.86) * 0.02 * (i ? -1 : 1);
+    });
+  }
+
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, W, H);
+  renderer.clear();
+  renderer.setScissorTest(true);
+
+  const q = slotEl.getBoundingClientRect();
+  if (q.width && q.bottom > 0 && q.top < H){
+    const y = H - q.bottom;
+    renderer.setViewport(q.left, y, q.width, q.height);
+    renderer.setScissor(q.left, y, q.width, q.height);
+    cam.aspect = q.width / q.height;
+    /* frame the whole figure, proportional to the rank's scale so the
+       tall Adiguru is not cut off and the short Anak Dagang is not lost */
+    cam.position.set(6 * avScale, 21 * avScale, 62 * avScale);
+    cam.lookAt(0, 17 * avScale, 0);
+    cam.updateProjectionMatrix();
+    renderer.render(scene, cam);
+  }
+  renderer.setScissorTest(false);
+}
+
+/* =====================================================================
+   Charts. Plain SVG, no library. Every chart carries a hover layer --
+   an HTML chart is interactive by default, and a mentor reading a
+   28-day grid will want the date under the cell.
+   ===================================================================== */
+function el(id){ return document.getElementById(id); }
+const CSS = getComputedStyle(document.documentElement);
+function tok(n){ return CSS.getPropertyValue(n).trim(); }
+const RAMP = ['--g1','--g2','--g3','--g4','--g5'].map(tok);
+
+const tip = el('tip');
+function showTip(html, x, y){
+  tip.innerHTML = html;
+  tip.style.opacity = 1;
+  const b = tip.getBoundingClientRect();
+  tip.style.left = Math.max(8, Math.min(innerWidth - b.width - 8, x - b.width / 2)) + 'px';
+  tip.style.top  = Math.max(8, y - b.height - 12) + 'px';
+}
+function hideTip(){ tip.style.opacity = 0; }
+/* the hit target is the row/cell, which is bigger than the mark */
+function hoverable(node, html){
+  node.addEventListener('pointerenter', function(e){
+    showTip(html, e.clientX, node.getBoundingClientRect().top);
+  });
+  node.addEventListener('pointermove', function(e){
+    showTip(html, e.clientX, node.getBoundingClientRect().top);
+  });
+  node.addEventListener('pointerleave', hideTip);
+}
+
+let WEEKS = 8, TABLE = false;
+
+/* ---- a single-series line. One series, so no legend box: the card
+        title names it. Direct label on the last point only -- a number
+        on every point is noise. ---- */
+function lineChart(host, series, opts){
+  opts = opts || {};
+  const w = host.clientWidth || 420, h = opts.h || 118;
+  const pad = {l:34, r:32, t:10, b:20};
+  const n = series.length;
+  const lo = Math.max(0, Math.min.apply(null, series) - 8);
+  const hi = Math.min(100, Math.max.apply(null, series) + 8);
+  const X = function(i){ return pad.l + i * (w - pad.l - pad.r) / (n - 1); };
+  const Y = function(v){ return pad.t + (1 - (v - lo) / (hi - lo)) * (h - pad.t - pad.b); };
+  const stroke = opts.stroke || tok('--g4');
+
+  let s = '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="' + h
+        + '" style="display:block; overflow:visible">';
+  [0, 0.5, 1].forEach(function(f){
+    const y = pad.t + f * (h - pad.t - pad.b);
+    s += '<line class="gridline" x1="' + pad.l + '" x2="' + (w - pad.r)
+       + '" y1="' + y + '" y2="' + y + '"/>';
+    s += '<text class="tk" x="' + (pad.l - 6) + '" y="' + (y + 3.5)
+       + '" text-anchor="end">' + Math.round(hi - f * (hi - lo)) + '</text>';
+  });
+  s += '<path class="spark-line" stroke="' + stroke + '" d="'
+     + series.map(function(v, i){ return (i ? 'L' : 'M') + X(i) + ' ' + Y(v); }).join('') + '"/>';
+  /* >=8px markers on the ends, which are the two points anyone reads */
+  [0, n - 1].forEach(function(i){
+    s += '<circle cx="' + X(i) + '" cy="' + Y(series[i]) + '" r="4.2" fill="'
+       + tok('--surf') + '" stroke="' + stroke + '" stroke-width="2"/>';
+  });
+  s += '<text class="tk" x="' + (X(n - 1) + 9) + '" y="' + (Y(series[n - 1]) + 3.5)
+     + '" style="fill:' + stroke + '; font-weight:700">' + series[n - 1] + '</text>';
+  s += '<text class="tk" x="' + pad.l + '" y="' + (h - 5) + '">'
+     + n + ' minggu lalu</text>';
+  s += '<text class="tk" x="' + (w - pad.r) + '" y="' + (h - 5)
+     + '" text-anchor="end">minggu ini</text>';
+
+  /* crosshair + tooltip band per week */
+  const bw = (w - pad.l - pad.r) / (n - 1);
+  for (let i = 0; i < n; i++)
+    s += '<rect class="hitw" data-i="' + i + '" x="' + (X(i) - bw / 2) + '" y="'
+       + pad.t + '" width="' + bw + '" height="' + (h - pad.t - pad.b)
+       + '" fill="transparent"/>';
+  s += '<line class="crosshair" id="xh-' + host.id + '" x1="0" x2="0" y1="'
+     + pad.t + '" y2="' + (h - pad.b) + '" style="opacity:0"/>';
+  s += '</svg>';
+  host.innerHTML = s;
+
+  const xh = host.querySelector('.crosshair');
+  host.querySelectorAll('.hitw').forEach(function(r){
+    r.addEventListener('pointerenter', function(){
+      const i = +r.dataset.i;
+      xh.setAttribute('x1', X(i)); xh.setAttribute('x2', X(i));
+      xh.style.opacity = 1;
+    });
+    r.addEventListener('pointermove', function(e){
+      const i = +r.dataset.i;
+      const dlt = i ? series[i] - series[i - 1] : 0;
+      showTip('<b>' + (n - 1 - i === 0 ? 'Minggu ini' : (n - 1 - i) + ' minggu lalu')
+        + '</b><div class="r"><span>Nur Amanah</span><b>' + series[i] + '</b></div>'
+        + (i ? '<div class="r"><span>Berbanding minggu sebelum</span><b style="color:'
+            + (dlt >= 0 ? tok('--st-naik') : tok('--st-sapa')) + '">'
+            + (dlt >= 0 ? '+' : '') + dlt + '</b></div>' : ''),
+        e.clientX, host.getBoundingClientRect().top + Y(series[i]));
+    });
+    r.addEventListener('pointerleave', function(){ xh.style.opacity = 0; hideTip(); });
+  });
+}
+
+function lineTable(host, series, label){
+  let s = '<table><thead><tr><th>Minggu</th><th>' + label
+        + '</th><th>Beza</th></tr></thead><tbody>';
+  series.forEach(function(v, i){
+    const d = i ? v - series[i - 1] : null;
+    s += '<tr><td>' + (series.length - 1 - i === 0 ? 'Minggu ini'
+          : '−' + (series.length - 1 - i)) + '</td><td>' + v + '</td><td>'
+       + (d === null ? '—' : (d > 0 ? '+' : '') + d) + '</td></tr>';
+  });
+  host.innerHTML = s + '</tbody></table>';
+}
+
+/* ---- 28-day heatmap. Built from divs, not SVG, so the 2px surface gap
+        between cells is the grid gap and needs no per-cell stroke. ---- */
+const DAY = ['Ahad','Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu'];
+function heatmap(host, p){
+  let s = '<div class="hm"><div class="hm-rows">';
+  AMAL_ROWS.forEach(function(a){ s += '<div class="hm-lab">' + a.nm + '</div>'; });
+  s += '</div><div class="hm-rows">';
+  p.grid.forEach(function(row, ai){
+    s += '<div class="hm-line">';
+    row.forEach(function(v, d){
+      s += '<div class="cell" data-a="' + ai + '" data-d="' + d + '"'
+         + (v ? ' style="background:' + RAMP[v - 1]
+                + '; box-shadow:none"' : '') + '></div>';
+    });
+    s += '</div>';
+  });
+  host.innerHTML = s + '</div></div>';
+
+  const today = new Date();
+  host.querySelectorAll('.cell').forEach(function(c){
+    const a = +c.dataset.a, d = +c.dataset.d, v = p.grid[a][d];
+    const dt = new Date(today.getTime() - (27 - d) * 864e5);
+    hoverable(c, '<b>' + AMAL_ROWS[a].nm + '</b><div class="r"><span>'
+      + DAY[dt.getDay()] + ', ' + dt.getDate() + '/' + (dt.getMonth() + 1)
+      + '</span></div><div class="r"><span>' + (v ? 'Ditanda' : 'Tiada catatan')
+      + '</span><b>' + (v ? v + '/4' : '—') + '</b></div>');
+  });
+}
+
+function heatTable(host, p){
+  let s = '<table><thead><tr><th>Amal</th><th>7 hari</th><th>28 hari</th>'
+        + '<th>Purata aras</th></tr></thead><tbody>';
+  p.grid.forEach(function(row, a){
+    const hit = row.filter(function(v){ return v; });
+    s += '<tr><td>' + AMAL_ROWS[a].nm + '</td><td>' + last7(p, a) + '/7</td><td>'
+       + hit.length + '/28</td><td>'
+       + (hit.length ? (hit.reduce(function(x, y){ return x + y; }, 0) / hit.length).toFixed(1)
+                     : '—') + '</td></tr>';
+  });
+  host.innerHTML = s + '</tbody></table>';
+}
+
+/* ---- stacked tendency bars. Three series, so a legend is always
+        present, and <=4 series means they are direct-labelled too:
+        identity never rests on colour alone. ---- */
+/* the label rides the fill, so it picks whichever ink actually reads on
+   it -- the dark green takes light ink, the amber takes dark */
+function inkOn(hex){
+  const n = parseInt(hex.slice(1), 16);
+  const lum = (0.2126 * (n >> 16 & 255) + 0.7152 * (n >> 8 & 255)
+             + 0.0722 * (n & 255)) / 255;
+  return lum > 0.52 ? 'rgba(7,17,12,.88)' : 'rgba(240,252,244,.94)';
+}
+
+function moodBars(host, p){
+  let s = '';
+  p.moods.forEach(function(m, si){
+    s += '<div class="brow"><div class="bl">' + SOLAT_ROWS[si]
+       + '</div><div class="track" data-s="' + si + '">';
+    MOOD_ROWS.forEach(function(mr){
+      const v = m[mr.k], pc = v / 28 * 100;
+      if (!v) return;
+      s += '<div class="seg-f" style="width:' + pc + '%; background:'
+         + tok(mr.css) + '; color:' + inkOn(tok(mr.css)) + '">'
+         + (pc >= 17 ? Math.round(pc) + '%' : '') + '</div>';
+    });
+    s += '</div></div>';
+  });
+  host.innerHTML = s;
+
+  host.querySelectorAll('.track').forEach(function(tr){
+    const m = p.moods[+tr.dataset.s];
+    hoverable(tr, '<b>Solat ' + SOLAT_ROWS[+tr.dataset.s]
+      + '</b><div style="color:var(--ink3); margin:2px 0 4px">28 hari</div>'
+      + MOOD_ROWS.map(function(mr){
+          return '<div class="r"><span><i style="background:' + tok(mr.css)
+            + '"></i>' + mr.nm + '</span><b>' + m[mr.k] + ' hari</b></div>';
+        }).join(''));
+  });
+}
+
+function moodTable(host, p){
+  let s = '<table><thead><tr><th>Waktu</th>'
+        + MOOD_ROWS.map(function(m){ return '<th>' + m.nm + '</th>'; }).join('')
+        + '</tr></thead><tbody>';
+  p.moods.forEach(function(m, si){
+    s += '<tr><td>' + SOLAT_ROWS[si] + '</td>'
+       + MOOD_ROWS.map(function(mr){ return '<td>' + m[mr.k] + '</td>'; }).join('')
+       + '</tr>';
+  });
+  host.innerHTML = s + '</tbody></table>';
+}
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+/* every chip carries a shape as well as a colour, so the four states are
+   never distinguishable by hue alone */
+const ICO = {
+  isyarat:{d:'M4 0v5M4 6.6v1.4', s:1},
+  senyap: {d:'M1 4h6', s:1},
+  naik:   {d:'M4 0L8 6H0z'},
+  turun:  {d:'M4 8L0 2h8z'}
+};
+function chipIco(kind){
+  const i = ICO[kind] || ICO.isyarat;
+  return '<svg viewBox="0 0 8 8" aria-hidden="true"><path d="' + i.d + '"'
+    + (i.s ? ' stroke="currentColor" stroke-width="1.6" fill="none"'
+           : ' fill="currentColor"') + '/></svg>';
+}
+
+function renderTiles(){
+  const avg = Math.round(PEOPLE.reduce(function(a, p){ return a + p.amanah; }, 0) / PEOPLE.length);
+  const prev = Math.round(PEOPLE.reduce(function(a, p){ return a + p.trend[9]; }, 0) / PEOPLE.length);
+  const mut = Math.round(PEOPLE.reduce(function(a, p){ return a + mutabaah7(p); }, 0) / PEOPLE.length * 100);
+  const quiet = PEOPLE.filter(function(p){ return p.silence >= 3; }).length;
+  const d = avg - prev;
+
+  el('tiles').innerHTML = [
+    ['PERLU DISAPA', TRIAGE.length, 'daripada ' + PEOPLE.length + ' mutarabbi', tok('--st-sapa')],
+    ['NUR AMANAH HALAQAH', avg, (d >= 0 ? '+' : '') + d + ' berbanding 2 minggu lalu',
+     d > 0 ? tok('--st-naik') : d < 0 ? tok('--st-sapa') : tok('--st-senyap')],
+    ['MUTABAAH 7 HARI', mut + '%', 'purata petak ditanda', tok('--g3')],
+    ['SENYAP ≥3 HARI', quiet, quiet ? 'hubungi luar aplikasi' : 'tiada', tok('--st-senyap')]
+  ].map(function(t){
+    return '<div class="tile"><div class="bar" style="background:' + t[3]
+      + '"></div><div class="k">' + t[0] + '</div><div class="v">' + t[1]
+      + '</div><div class="d">' + t[2] + '</div></div>';
+  }).join('');
+}
+
+function renderTriage(){
+  el('tri-n').textContent = TRIAGE.length + ' DARIPADA ' + PEOPLE.length;
+  el('triage').innerHTML = TRIAGE.map(function(p){
+    const r = p.top;
+    return '<button class="trow" data-nm="' + p.nm + '"'
+      + (p === current ? ' aria-current="true"' : '') + '>'
+      + '<img class="bust" src="' + (BUST[p.r - 1] || '') + '" alt="">'
+      + '<div><div class="nm">' + p.nm + ' <span class="chip ' + r.cls + '">'
+      + chipIco(r.kind) + r.tag + '</span></div>'
+      + '<div class="why">' + r.why + '</div></div>'
+      + '<span class="act">' + (r.kind === 'naik' ? 'Iktiraf' : 'Sapa') + '</span>'
+      + '</button>';
+  }).join('');
+  if (SPILL.length){
+    const many = SPILL.length > 1;
+    el('triage').insertAdjacentHTML('beforeend',
+      '<div class="note" style="margin-top:13px">' + SPILL.length
+      + ' lagi menunjukkan isyarat yang sama tetapi lebih perlahan — '
+      + SPILL.map(function(p){ return p.nm.split(' ')[0]; }).join(', ')
+      + '. ' + (many ? 'Mereka tidak hilang; mereka' : 'Dia tidak hilang; dia')
+      + ' masuk ke <b>topik halaqah</b>, sebab pola yang dikongsi ramai '
+      + 'bukan lagi hal peribadi.</div>');
+  }
+  el('triage').querySelectorAll('.trow').forEach(function(b){
+    b.addEventListener('click', function(e){
+      if (e.target.classList.contains('act')){
+        toast(b.dataset.nm.split(' ')[0] + ' — catat taujihat selepas menyapa.');
+      }
+      select(PEOPLE.find(function(p){ return p.nm === b.dataset.nm; }));
+    });
+  });
+}
+
+function renderDist(){
+  const cnt = [0,0,0,0,0];
+  PEOPLE.forEach(function(p){ cnt[p.r - 1]++; });
+  const max = Math.max.apply(null, cnt);
+  el('dist').innerHTML = RANKS.map(function(rk, i){
+    return '<div class="brow"><div class="bl">' + rk.rank + ' · ' + rk.name
+      + '</div><div class="track"><div class="fill" style="width:'
+      + (cnt[i] / max * 100) + '%; background:' + RAMP[i] + '"></div></div>'
+      + '<div class="cnt">' + cnt[i] + '</div></div>';
+  }).join('');
+  el('ramp-sw').innerHTML = RAMP.map(function(c){
+    return '<i style="background:' + c + '"></i>';
+  }).join('');
+  el('hm-ramp').innerHTML = RAMP.map(function(c){
+    return '<i style="background:' + c + '"></i>';
+  }).join('');
+}
+
+function renderTopic(){
+  /* Two candidates compete for the week's topic, and they are different
+     kinds of evidence:
+       - the weakest amal: a level, averaged across the halaqah
+       - a shared reflection pattern: the same prayer reported rushed by
+         many people, which is a *pattern* and therefore stronger
+     A pattern half the group shares wins, because twelve private
+     corrections of one shared condition is the failure mode this whole
+     screen exists to avoid. */
+  const score = AMAL_ROWS.map(function(a, ai){
+    return PEOPLE.reduce(function(s, p){ return s + last7(p, ai); }, 0) / (PEOPLE.length * 7);
+  });
+  let w = 0;
+  score.forEach(function(v, i){ if (v < score[w]) w = i; });
+
+  const shared = SOLAT_ROWS.map(function(_, si){
+    return PEOPLE.filter(function(p){ return p.moods[si].gesa >= 11; }).length;
+  });
+  let sw = 0;
+  shared.forEach(function(v, i){ if (v > shared[sw]) sw = i; });
+  const patternWins = shared[sw] >= PEOPLE.length / 2;
+
+  if (patternWins){
+    el('topic').innerHTML =
+      '<div style="font-size:11px; letter-spacing:.18em; color:var(--st-sapa)">'
+      + 'POLA DIKONGSI</div>'
+      + '<div style="font-size:24px; font-weight:700; margin:7px 0 4px">'
+      + 'Solat ' + SOLAT_ROWS[sw] + '</div>'
+      + '<div style="font-size:12.5px; color:var(--ink2); line-height:1.6">'
+      + '<b style="font-family:ui-monospace,Menlo,monospace">' + shared[sw]
+      + ' daripada ' + PEOPLE.length + '</b> melaporkan tergesa pada waktu '
+      + 'yang sama. Amal paling lemah minggu ini ialah <b>'
+      + AMAL_ROWS[w].nm + '</b> (' + Math.round(score[w] * 100)
+      + '% ditanda), tetapi itu satu aras — ini satu pola.</div>'
+      + '<div class="note">Pola yang dikongsi separuh kumpulan bukan '
+      + 'sepuluh masalah peribadi. Ia satu keadaan: mungkin waktu kerja, '
+      + 'mungkin jarak masjid. Tanya kumpulan, jangan tegur seorang-'
+      + 'seorang.</div>';
+  } else {
+    el('topic').innerHTML =
+      '<div style="font-size:11px; letter-spacing:.18em; color:var(--ink3)">'
+      + 'AMAL PALING LEMAH</div>'
+      + '<div style="font-size:24px; font-weight:700; margin:7px 0 4px">'
+      + AMAL_ROWS[w].nm + '</div>'
+      + '<div style="font-size:12.5px; color:var(--ink2); line-height:1.6">'
+      + '<b style="font-family:ui-monospace,Menlo,monospace">'
+      + Math.round(score[w] * 100) + '%</b> petak ditanda seluruh halaqah '
+      + 'dalam 7 hari — paling rendah antara ' + AMAL_ROWS.length + ' amal.'
+      + '</div>'
+      + '<div class="note">Tiada pola muhasabah yang dikongsi ramai minggu '
+      + 'ini, jadi amal paling lemah yang jadi topik.</div>';
+  }
+}
+
+let current = TRIAGE[0] || PEOPLE[0];
+
+function select(p){
+  current = p;
+  setAvatar(p.r);
+  const rk = RANKS[p.r - 1];
+
+  el('m-name').textContent = p.nm;
+  el('m-rank').textContent = 'PANGKAT ' + rk.rank + ' · ' + rk.name.toUpperCase();
+
+  const mut = Math.round(mutabaah7(p) * 100);
+  el('m-meta').innerHTML =
+    'Nur Amanah <b>' + p.amanah + '</b> · mutabaah 7 hari <b>' + mut + '%</b><br>'
+    + (p.silence ? 'Catatan terakhir <b>' + p.silence + ' hari</b> lalu'
+                 : 'Mencatat <b>hari ini</b>')
+    + ' · ' + p.taujihat.length + ' taujihat';
+
+  renderMentee();
+  renderTaujihat();
+  el('triage').querySelectorAll('.trow').forEach(function(b){
+    b.setAttribute('aria-current', b.dataset.nm === p.nm ? 'true' : 'false');
+  });
+}
+
+function renderMentee(){
+  const p = current;
+  const series = p.trend.slice(12 - WEEKS);
+  el('m-trend-n').textContent = WEEKS + ' MINGGU';
+  el('m-trend').hidden = TABLE;
+  el('m-trend-tbl').hidden = !TABLE;
+  if (TABLE) lineTable(el('m-trend-tbl'), series, 'Nur Amanah');
+  else lineChart(el('m-trend'), series, {h:120});
+
+  el('hm').hidden = TABLE;
+  el('hm-tbl').hidden = !TABLE;
+  document.querySelector('.hm-x').hidden = TABLE;
+  if (TABLE) heatTable(el('hm-tbl'), p); else heatmap(el('hm'), p);
+
+  el('moods').hidden = TABLE;
+  el('moods-tbl').hidden = !TABLE;
+  if (TABLE) moodTable(el('moods-tbl'), p); else moodBars(el('moods'), p);
+  el('mood-legend').innerHTML = MOOD_ROWS.map(function(m){
+    return '<span><i style="background:' + tok(m.css) + '"></i>' + m.nm + '</span>';
+  }).join('');
+}
+
+function renderTaujihat(){
+  el('tj-n').textContent = current.taujihat.length + ' CATATAN';
+  el('tj').innerHTML = current.taujihat.map(function(t){
+    return '<div class="tj-item"><div class="d">' + t.d + '</div>' + t.t + '</div>';
+  }).join('') || '<div class="tj-item" style="color:var(--ink3)">Belum ada '
+    + 'catatan. Taujihat pertama biasanya selepas perbualan, bukan sebelum.</div>';
+}
+
+function renderPulse(){
+  const avg = [];
+  for (let w = 12 - WEEKS; w < 12; w++)
+    avg.push(Math.round(PEOPLE.reduce(function(a, p){ return a + p.trend[w]; }, 0) / PEOPLE.length));
+  el('pulse-n').textContent = 'NUR AMANAH · PURATA ' + WEEKS + ' MINGGU';
+  el('pulse').hidden = TABLE;
+  el('pulse-tbl').hidden = !TABLE;
+  if (TABLE) lineTable(el('pulse-tbl'), avg, 'Purata halaqah');
+  else lineChart(el('pulse'), avg, {h:150, stroke:tok('--g4')});
+}
+
+let tt;
+function toast(msg){
+  const t = el('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(tt); tt = setTimeout(function(){ t.classList.remove('on'); }, 2100);
+}
+
+/* ---- filters: one row, above the charts, and they actually filter ---- */
+el('f-weeks').addEventListener('click', function(e){
+  const b = e.target.closest('button'); if (!b) return;
+  WEEKS = +b.dataset.w;
+  el('f-weeks').querySelectorAll('button').forEach(function(x){
+    x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+  });
+  renderPulse(); renderMentee();
+});
+
+el('f-table').addEventListener('click', function(){
+  TABLE = !TABLE;
+  el('f-table').setAttribute('aria-pressed', TABLE);
+  el('f-table').textContent = TABLE ? 'Papar carta' : 'Papar jadual';
+  renderPulse(); renderMentee();
+});
+
+el('f-halaqah').addEventListener('change', function(){
+  toast('Mockup: satu halaqah sahaja bermuatan data.');
+  el('f-halaqah').selectedIndex = 0;
+});
+
+el('tj-add').addEventListener('click', function(){
+  const v = el('tj-in').value.trim();
+  if (!v) return;
+  current.taujihat.unshift({d:'HARI INI', t:v});
+  el('tj-in').value = '';
+  renderTaujihat();
+  el('tj-n').textContent = current.taujihat.length + ' CATATAN';
+  toast('Taujihat disimpan untuk ' + current.nm.split(' ')[0] + '.');
+});
+el('tj-in').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') el('tj-add').click();
+});
+
+/* ---- boot ---- */
+document.querySelector('.brand .mk').innerHTML =
+  viFlat('wajik', 30).replace(/^<svg[^>]*>|<\/svg>$/g, '');
+el('chip-ico').innerHTML = viFlat('orang', 18).replace(/^<svg[^>]*>|<\/svg>$/g, '');
+document.querySelector('.brand .mk').style.color = tok('--neon');
+el('chip-ico').style.color = tok('--ink2');
+
+el('today').textContent = new Date().toLocaleDateString('ms-MY',
+  {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+bakeIcons();
+bakeBusts();
+renderTiles();
+renderTriage();
+renderDist();
+renderTopic();
+renderPulse();
+select(current);
+frame();
+
+addEventListener('resize', function(){ renderPulse(); renderMentee(); });
+</script>
+</body>
+</html>
