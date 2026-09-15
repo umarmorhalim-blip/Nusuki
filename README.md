@@ -619,3 +619,40 @@ renderer lives in a guarded `boot3D()` — verified with three.js blocked
 outright: all five screens still render, the slots say *"avatar tak dapat
 dimuat"* instead of sitting empty, and `renderFloatBadges` no-ops rather than
 throwing on a null scene.
+
+## The MirVA mark
+
+The brand assets live in `assets/logo/` as supplied, **C2PA content credentials
+intact** — seven SVGs: the icon in full colour, white and solid teal, the marks
+for light and dark grounds, the horizontal lockup, and a 1024 app icon.
+
+The mark appears in the app's status bar and the dashboard header. Three
+decisions about how:
+
+- **Inlined, not referenced.** The polygons sit directly in each page with the
+  C2PA block and `<title>` stripped — the metadata is 13KB of base64 per copy
+  and belongs with the original file, not in every page that draws the logo.
+- **No `<symbol>`/`<use>`.** The first attempt put a viewBox on both the symbol
+  and the outer `<svg>`, so the mark was mapped twice and three of its five
+  columns fell outside the box. It rendered as three fragments and looked like
+  a broken glyph. One viewBox, one mapping.
+- **The wordmark stays in the page's own type.** The supplied lockup sets
+  "MirVA" as live text in **Poppins ExtraBold**. A webfont is a network
+  dependency, and a missing webfont is precisely the failure that came up empty
+  on a phone earlier in this build — so the wordmark keeps the page's
+  monospace and borrows only the lockup's colour split: `Mir` teal `#2ec4b3`,
+  `VA` gold `#d4ab68`.
+
+It also had to be **made bigger twice**. At 26×16 and then 42×25 the five
+isometric columns merged into three blobs; below roughly 40px wide this mark
+does not survive. It now sits at 44×26 in the status bar and 66×39 in the
+dashboard header.
+
+**One tension left open, deliberately.** The mark is teal and gold; the UI is
+neon green `#39ff6a`. I did not repaint the logo to match — repainting an
+identity to suit a UI is the wrong way round, and the pack's white and
+solid-teal variants exist for cases where a single colour is needed. Teal and
+gold are already in this palette (the renang and qiam glyphs, the bundle
+labels), so they are not foreign. But if the brand is teal, the honest next
+step is to move the UI accent toward teal rather than leaving the logo as the
+one teal object on a green screen.

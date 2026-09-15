@@ -63,8 +63,13 @@ a{color:inherit}
 header{display:flex; align-items:center; gap:16px; flex-wrap:wrap;
        padding:0 0 18px}
 .brand{display:flex; align-items:center; gap:11px}
-.brand .mk{width:30px; height:30px; flex:none}
+/* The mark is 168x100, so it gets a wide box rather than a square one --
+   and a generous one: at 42px wide the five columns collapsed into three
+   blobs. */
+.brand .mk{width:66px; height:39px; flex:none; display:block}
 .brand b{font-size:16px; letter-spacing:.14em; font-weight:700}
+.brand b i{font-style:normal; color:#2ec4b3}
+.brand b u{text-decoration:none; color:#d4ab68}
 .brand span{display:block; font-size:10px; letter-spacing:.26em;
             color:var(--ink3); margin-top:1px}
 .hspace{flex:1}
@@ -411,6 +416,21 @@ body.fit #gl{display:none}
 }
 </style>
 
+<!-- MirVA mark, inlined from assets/logo/mirva-1c-icon.svg. Two things
+     are stripped: the C2PA metadata block (13KB of base64 per copy, which
+     belongs with the original file, not in every page) and the <title>,
+     replaced by the aria-label here.
+
+     Inlined rather than referenced through <symbol>/<use>: with a viewBox
+     on both the symbol and the outer svg, the mark was mapped twice and
+     three of its five columns fell outside the box. One viewBox, one
+     mapping, no ambiguity.
+
+     The supplied lockup sets the wordmark as live Poppins ExtraBold text.
+     A webfont is a network dependency, and a missing one is exactly the
+     failure that came up empty on a phone earlier, so the wordmark stays
+     in the page's own type and borrows only the lockup's colour split --
+     Mir teal, VA gold. -->
 <canvas id="gl"></canvas>
 <div id="tip" role="tooltip"></div>
 <div id="toast" role="status"></div>
@@ -425,8 +445,9 @@ body.fit #gl{display:none}
 
   <header>
     <div class="brand">
-      <svg class="mk" viewBox="0 0 8 8" shape-rendering="crispEdges"></svg>
-      <div><b>MirVA</b><span>DASHBOARD MURABBI</span></div>
+      <svg class="mk" viewBox="-20.00 -59.50 168.00 100.46" role="img" aria-label="MirVA"
+           shape-rendering="crispEdges"><polygon points="-16,9.2 -16,-9.3 0,-0 0,18.5" fill="#0c6459"/><polygon points="16,9.2 16,-9.3 0,-0 0,18.5" fill="#128c80"/><polygon points="0,-18.5 16,-9.3 0,-0 -16,-9.3" fill="#1aa396"/><polygon points="16,9.2 16,-9.3 32,-0 32,18.5" fill="#0c6459"/><polygon points="48,9.2 48,-9.3 32,-0 32,18.5" fill="#128c80"/><polygon points="32,-18.5 48,-9.3 32,-0 16,-9.3" fill="#1aa396"/><polygon points="48,9.2 48,-9.3 64,-0 64,18.5" fill="#0c6459"/><polygon points="80,9.2 80,-9.3 64,-0 64,18.5" fill="#128c80"/><polygon points="64,-18.5 80,-9.3 64,-0 48,-9.3" fill="#1aa396"/><polygon points="80,9.2 80,-9.3 96,-0 96,18.5" fill="#0c6459"/><polygon points="112,9.2 112,-9.3 96,-0 96,18.5" fill="#128c80"/><polygon points="96,-18.5 112,-9.3 96,-0 80,-9.3" fill="#1aa396"/><polygon points="112,9.2 112,-9.3 128,-0 128,18.5" fill="#0c6459"/><polygon points="144,9.2 144,-9.3 128,-0 128,18.5" fill="#128c80"/><polygon points="128,-18.5 144,-9.3 128,-0 112,-9.3" fill="#1aa396"/><polygon points="-16,-9.3 -16,-27.8 0,-18.5 0,-0" fill="#0c6459"/><polygon points="16,-9.3 16,-27.8 0,-18.5 0,-0" fill="#128c80"/><polygon points="0,-37 16,-27.8 0,-18.5 -16,-27.8" fill="#1aa396"/><polygon points="48,-9.3 48,-27.8 64,-18.5 64,-0" fill="#0c6459"/><polygon points="80,-9.3 80,-27.8 64,-18.5 64,-0" fill="#128c80"/><polygon points="64,-37 80,-27.8 64,-18.5 48,-27.8" fill="#1aa396"/><polygon points="112,-9.3 112,-27.8 128,-18.5 128,-0" fill="#0c6459"/><polygon points="144,-9.3 144,-27.8 128,-18.5 128,-0" fill="#128c80"/><polygon points="128,-37 144,-27.8 128,-18.5 112,-27.8" fill="#1aa396"/><polygon points="-16,-27.8 -16,-46.3 0,-37 0,-18.5" fill="#8e6f3c"/><polygon points="16,-27.8 16,-46.3 0,-37 0,-18.5" fill="#bf9757"/><polygon points="0,-55.5 16,-46.3 0,-37 -16,-46.3" fill="#d4ab68"/><polygon points="112,-27.8 112,-46.3 128,-37 128,-18.5" fill="#8e6f3c"/><polygon points="144,-27.8 144,-46.3 128,-37 128,-18.5" fill="#bf9757"/><polygon points="128,-55.5 144,-46.3 128,-37 112,-46.3" fill="#d4ab68"/><polygon points="-16,27.7 -16,9.2 0,18.5 0,37" fill="#0c6459"/><polygon points="16,27.7 16,9.2 0,18.5 0,37" fill="#128c80"/><polygon points="0,-0 16,9.2 0,18.5 -16,9.2" fill="#1aa396"/><polygon points="16,27.7 16,9.2 32,18.5 32,37" fill="#0c6459"/><polygon points="48,27.7 48,9.2 32,18.5 32,37" fill="#128c80"/><polygon points="32,-0 48,9.2 32,18.5 16,9.2" fill="#1aa396"/><polygon points="48,27.7 48,9.2 64,18.5 64,37" fill="#0c6459"/><polygon points="80,27.7 80,9.2 64,18.5 64,37" fill="#128c80"/><polygon points="64,-0 80,9.2 64,18.5 48,9.2" fill="#1aa396"/><polygon points="80,27.7 80,9.2 96,18.5 96,37" fill="#0c6459"/><polygon points="112,27.7 112,9.2 96,18.5 96,37" fill="#128c80"/><polygon points="96,-0 112,9.2 96,18.5 80,9.2" fill="#1aa396"/><polygon points="112,27.7 112,9.2 128,18.5 128,37" fill="#0c6459"/><polygon points="144,27.7 144,9.2 128,18.5 128,37" fill="#128c80"/><polygon points="128,-0 144,9.2 128,18.5 112,9.2" fill="#1aa396"/><polygon points="-16,9.2 -16,-9.3 0,-0 0,18.5" fill="#0c6459"/><polygon points="16,9.2 16,-9.3 0,-0 0,18.5" fill="#128c80"/><polygon points="0,-18.5 16,-9.3 0,-0 -16,-9.3" fill="#1aa396"/><polygon points="48,9.2 48,-9.3 64,-0 64,18.5" fill="#0c6459"/><polygon points="80,9.2 80,-9.3 64,-0 64,18.5" fill="#128c80"/><polygon points="64,-18.5 80,-9.3 64,-0 48,-9.3" fill="#1aa396"/><polygon points="112,9.2 112,-9.3 128,-0 128,18.5" fill="#0c6459"/><polygon points="144,9.2 144,-9.3 128,-0 128,18.5" fill="#128c80"/><polygon points="128,-18.5 144,-9.3 128,-0 112,-9.3" fill="#1aa396"/><polygon points="-16,-9.3 -16,-27.8 0,-18.5 0,-0" fill="#8e6f3c"/><polygon points="16,-9.3 16,-27.8 0,-18.5 0,-0" fill="#bf9757"/><polygon points="0,-37 16,-27.8 0,-18.5 -16,-27.8" fill="#d4ab68"/><polygon points="112,-9.3 112,-27.8 128,-18.5 128,-0" fill="#8e6f3c"/><polygon points="144,-9.3 144,-27.8 128,-18.5 128,-0" fill="#bf9757"/><polygon points="128,-37 144,-27.8 128,-18.5 112,-27.8" fill="#d4ab68"/></svg>
+      <div><b><i>Mir</i><u>VA</u></b><span>DASHBOARD MURABBI</span></div>
     </div>
     <div class="hspace"></div>
     <div class="who">
@@ -2620,10 +2641,7 @@ el('tj-in').addEventListener('keydown', function(e){
 });
 
 /* ---- boot ---- */
-document.querySelector('.brand .mk').innerHTML =
-  viFlat('wajik', 30).replace(/^<svg[^>]*>|<\/svg>$/g, '');
 el('chip-ico').innerHTML = viFlat('orang', 18).replace(/^<svg[^>]*>|<\/svg>$/g, '');
-document.querySelector('.brand .mk').style.color = tok('--neon');
 el('chip-ico').style.color = tok('--ink2');
 
 el('today').textContent = new Date().toLocaleDateString('ms-MY',

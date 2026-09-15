@@ -58,10 +58,20 @@ body::before{
 /* status bar */
 .sbar{
   flex:0 0 auto; display:flex; align-items:center; gap:8px;
-  padding:9px 16px 7px; font-size:10px; letter-spacing:.14em; color:var(--text-dim);
+  padding:7px 16px 6px; font-size:10px; letter-spacing:.14em; color:var(--text-dim);
   border-bottom:1px solid var(--line-dim);
 }
-.sbar .brand{ color:var(--neon); letter-spacing:.22em; font-weight:700 }
+/* The mark is teal and gold; the app is neon green. They are allowed to
+   sit together because teal and gold are already in this palette (the
+   renang and qiam glyphs), but the logo keeps the brand's own colours --
+   repainting an identity to match a UI is the wrong way round. */
+.sbar .logo{ display:flex; align-items:center; gap:7px }
+/* 26x16 was unreadable: this is a five-column isometric shape, and below
+   about 40px wide the middle pillars merge into the outer ones. */
+.sbar .mk{ width:44px; height:26px; display:block; flex:none }
+.sbar .brand{ letter-spacing:.14em; font-weight:700; font-style:normal }
+.sbar .brand i{ font-style:normal; color:#2ec4b3 }
+.sbar .brand u{ text-decoration:none; color:#d4ab68 }
 .sbar .sp{ flex:1 }
 .sbar .live{ color:var(--neon); font-size:9px; letter-spacing:.16em;
   display:flex; align-items:center; gap:5px }
@@ -353,10 +363,29 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
 </head>
 <body>
 
+<!-- MirVA mark, inlined from assets/logo/mirva-1c-icon.svg. Two things
+     are stripped: the C2PA metadata block (13KB of base64 per copy, which
+     belongs with the original file, not in every page) and the <title>,
+     replaced by the aria-label here.
+
+     Inlined rather than referenced through <symbol>/<use>: with a viewBox
+     on both the symbol and the outer svg, the mark was mapped twice and
+     three of its five columns fell outside the box. One viewBox, one
+     mapping, no ambiguity.
+
+     The supplied lockup sets the wordmark as live Poppins ExtraBold text.
+     A webfont is a network dependency, and a missing one is exactly the
+     failure that came up empty on a phone earlier, so the wordmark stays
+     in the page's own type and borrows only the lockup's colour split --
+     Mir teal, VA gold. -->
 <div class="phone">
   <div class="sbar">
     <span>9:41</span>
-    <span class="brand">MirVA</span>
+    <span class="logo">
+      <svg class="mk" viewBox="-20.00 -59.50 168.00 100.46" role="img" aria-label="MirVA"
+           shape-rendering="crispEdges"><polygon points="-16,9.2 -16,-9.3 0,-0 0,18.5" fill="#0c6459"/><polygon points="16,9.2 16,-9.3 0,-0 0,18.5" fill="#128c80"/><polygon points="0,-18.5 16,-9.3 0,-0 -16,-9.3" fill="#1aa396"/><polygon points="16,9.2 16,-9.3 32,-0 32,18.5" fill="#0c6459"/><polygon points="48,9.2 48,-9.3 32,-0 32,18.5" fill="#128c80"/><polygon points="32,-18.5 48,-9.3 32,-0 16,-9.3" fill="#1aa396"/><polygon points="48,9.2 48,-9.3 64,-0 64,18.5" fill="#0c6459"/><polygon points="80,9.2 80,-9.3 64,-0 64,18.5" fill="#128c80"/><polygon points="64,-18.5 80,-9.3 64,-0 48,-9.3" fill="#1aa396"/><polygon points="80,9.2 80,-9.3 96,-0 96,18.5" fill="#0c6459"/><polygon points="112,9.2 112,-9.3 96,-0 96,18.5" fill="#128c80"/><polygon points="96,-18.5 112,-9.3 96,-0 80,-9.3" fill="#1aa396"/><polygon points="112,9.2 112,-9.3 128,-0 128,18.5" fill="#0c6459"/><polygon points="144,9.2 144,-9.3 128,-0 128,18.5" fill="#128c80"/><polygon points="128,-18.5 144,-9.3 128,-0 112,-9.3" fill="#1aa396"/><polygon points="-16,-9.3 -16,-27.8 0,-18.5 0,-0" fill="#0c6459"/><polygon points="16,-9.3 16,-27.8 0,-18.5 0,-0" fill="#128c80"/><polygon points="0,-37 16,-27.8 0,-18.5 -16,-27.8" fill="#1aa396"/><polygon points="48,-9.3 48,-27.8 64,-18.5 64,-0" fill="#0c6459"/><polygon points="80,-9.3 80,-27.8 64,-18.5 64,-0" fill="#128c80"/><polygon points="64,-37 80,-27.8 64,-18.5 48,-27.8" fill="#1aa396"/><polygon points="112,-9.3 112,-27.8 128,-18.5 128,-0" fill="#0c6459"/><polygon points="144,-9.3 144,-27.8 128,-18.5 128,-0" fill="#128c80"/><polygon points="128,-37 144,-27.8 128,-18.5 112,-27.8" fill="#1aa396"/><polygon points="-16,-27.8 -16,-46.3 0,-37 0,-18.5" fill="#8e6f3c"/><polygon points="16,-27.8 16,-46.3 0,-37 0,-18.5" fill="#bf9757"/><polygon points="0,-55.5 16,-46.3 0,-37 -16,-46.3" fill="#d4ab68"/><polygon points="112,-27.8 112,-46.3 128,-37 128,-18.5" fill="#8e6f3c"/><polygon points="144,-27.8 144,-46.3 128,-37 128,-18.5" fill="#bf9757"/><polygon points="128,-55.5 144,-46.3 128,-37 112,-46.3" fill="#d4ab68"/><polygon points="-16,27.7 -16,9.2 0,18.5 0,37" fill="#0c6459"/><polygon points="16,27.7 16,9.2 0,18.5 0,37" fill="#128c80"/><polygon points="0,-0 16,9.2 0,18.5 -16,9.2" fill="#1aa396"/><polygon points="16,27.7 16,9.2 32,18.5 32,37" fill="#0c6459"/><polygon points="48,27.7 48,9.2 32,18.5 32,37" fill="#128c80"/><polygon points="32,-0 48,9.2 32,18.5 16,9.2" fill="#1aa396"/><polygon points="48,27.7 48,9.2 64,18.5 64,37" fill="#0c6459"/><polygon points="80,27.7 80,9.2 64,18.5 64,37" fill="#128c80"/><polygon points="64,-0 80,9.2 64,18.5 48,9.2" fill="#1aa396"/><polygon points="80,27.7 80,9.2 96,18.5 96,37" fill="#0c6459"/><polygon points="112,27.7 112,9.2 96,18.5 96,37" fill="#128c80"/><polygon points="96,-0 112,9.2 96,18.5 80,9.2" fill="#1aa396"/><polygon points="112,27.7 112,9.2 128,18.5 128,37" fill="#0c6459"/><polygon points="144,27.7 144,9.2 128,18.5 128,37" fill="#128c80"/><polygon points="128,-0 144,9.2 128,18.5 112,9.2" fill="#1aa396"/><polygon points="-16,9.2 -16,-9.3 0,-0 0,18.5" fill="#0c6459"/><polygon points="16,9.2 16,-9.3 0,-0 0,18.5" fill="#128c80"/><polygon points="0,-18.5 16,-9.3 0,-0 -16,-9.3" fill="#1aa396"/><polygon points="48,9.2 48,-9.3 64,-0 64,18.5" fill="#0c6459"/><polygon points="80,9.2 80,-9.3 64,-0 64,18.5" fill="#128c80"/><polygon points="64,-18.5 80,-9.3 64,-0 48,-9.3" fill="#1aa396"/><polygon points="112,9.2 112,-9.3 128,-0 128,18.5" fill="#0c6459"/><polygon points="144,9.2 144,-9.3 128,-0 128,18.5" fill="#128c80"/><polygon points="128,-18.5 144,-9.3 128,-0 112,-9.3" fill="#1aa396"/><polygon points="-16,-9.3 -16,-27.8 0,-18.5 0,-0" fill="#8e6f3c"/><polygon points="16,-9.3 16,-27.8 0,-18.5 0,-0" fill="#bf9757"/><polygon points="0,-37 16,-27.8 0,-18.5 -16,-27.8" fill="#d4ab68"/><polygon points="112,-9.3 112,-27.8 128,-18.5 128,-0" fill="#8e6f3c"/><polygon points="144,-9.3 144,-27.8 128,-18.5 128,-0" fill="#bf9757"/><polygon points="128,-37 144,-27.8 128,-18.5 112,-27.8" fill="#d4ab68"/></svg>
+      <b class="brand"><i>Mir</i><u>VA</u></b>
+    </span>
     <span class="sp"></span>
     <span class="live"><b>●</b> LIVE</span>
   </div>
