@@ -104,38 +104,15 @@ h2.k{ margin:0 0 9px; font-weight:400 }
 #slot-home{ flex:0 0 76px; height:104px }
 #slot-avatar{ height:320px }
 
-/* Badges floating beside the avatar. These are ordinary DOM inside the slot,
-   sitting UNDER the 3D canvas -- which works because the canvas clears to
-   transparent and only paints the character, so everything else in the slot
-   shows straight through it. A chip that drifts behind the figure is read
-   correctly as being behind it. */
+/* The badge itself is a real object in the avatar's 3D scene; only its name
+   is DOM. The label is positioned each frame from the object's projected
+   world position, so it tracks the badge as it bobs. */
 .fb{
   position:absolute; z-index:2; pointer-events:none;
-  display:flex; flex-direction:column; align-items:center; gap:3px;
-  width:54px; padding:6px 4px 5px;
-  background:rgba(4,20,10,.82);
-  border:1px solid rgba(57,255,106,.45); border-radius:5px;
-  box-shadow:0 0 12px rgba(57,255,106,.18), inset 0 0 10px rgba(57,255,106,.06);
-  animation:fbfloat 3.6s ease-in-out infinite;
+  transform:translate(-50%, 5px);
+  font-size:7.5px; letter-spacing:.12em; color:#9fd9b3;
+  white-space:nowrap; text-shadow:0 0 6px rgba(2,8,5,.95);
 }
-.fb-l{ left:9px }
-.fb-r{ right:9px }
-.fb .vi{ width:23px; height:23px }
-.fb span{
-  font-size:7.5px; letter-spacing:.1em; color:#9fd9b3;
-  text-align:center; line-height:1.15;
-}
-.fb::after{           /* a short tether pointing in toward the figure */
-  content:""; position:absolute; top:50%; width:13px; height:1px;
-  background:linear-gradient(90deg, rgba(57,255,106,.55), transparent);
-}
-.fb-l::after{ left:100% }
-.fb-r::after{ right:100%; transform:scaleX(-1) }
-@keyframes fbfloat{
-  0%,100%{ transform:translateY(-4px) }
-  50%    { transform:translateY(4px) }
-}
-@media (prefers-reduced-motion:reduce){ .fb{ animation:none } }
 .slot .cap{
   position:absolute; left:0; right:0; bottom:5px; text-align:center;
   font-size:8.5px; letter-spacing:.18em; color:var(--text-muted);
@@ -278,10 +255,10 @@ button.ghost:hover{ color:#eafff0; border-color:var(--neon); filter:none }
 
 /* voxel icons */
 .vi{ display:block; width:18px; height:18px }
-.bdg .ic{ display:grid; place-items:center; height:21px }
-.bdg .vi{ width:21px; height:21px }
+.bdg .ic{ display:grid; place-items:center; height:24px }
+.bdg .vi{ width:24px; height:24px }
 .arow .ic{ display:grid; place-items:center }
-.venue .ico .vi{ width:25px; height:25px }
+.venue .ico .vi{ width:28px; height:28px }
 .tab .gl{ display:grid; place-items:center; margin-bottom:4px }
 .tab .vi{ width:15px; height:15px }
 .mood .em{ display:grid; place-items:center; margin-bottom:3px }
@@ -480,19 +457,27 @@ function paint(hex, part){
   return 'fill="' + shade(hex, FACE_K[part]) + '"';
 }
 
-/**
- * Render an icon grid as voxels: every filled pixel becomes a cube, extruded
- * up-and-right. A cube only draws its top face where nothing sits above it and
- * its side face where nothing sits to its right, so depth appears along the
- * silhouette exactly as it does on a real voxel sprite. Front faces are drawn
- * last because they are the nearest plane.
- *
- * `flat` skips the extrusion, for chrome small enough that it would turn to
- * mush -- tab marks, mood faces, the tick.
- */
+/* Baked 3D renders, filled in by bakeIcons() once Three.js and the voxel
+   geometry are ready. A pictorial icon with an entry here is served as that
+   image; chrome marks fall through to the flat vector below. */
+const ICON_IMG = {};
+
 function vi(name, px, flat){
+  const size = px ? ' style="width:' + px + 'px;height:' + px + 'px"' : '';
+  if (!flat && ICON_IMG[name]){
+    return '<img class="vi" src="' + ICON_IMG[name] + '" alt=""' + size + '>';
+  }
+  return viFlat(name, px);
+}
+
+/**
+ * The flat vector fallback: a plain 1x1-rect pixel grid. Used for chrome too
+ * small for a 3D render to survive -- tab marks, mood faces, the tick -- and
+ * as the pre-bake placeholder.
+ */
+function viFlat(name, px){
   const d = ICONS[name], g = d.g, N = 8;
-  const D = flat ? 0 : 1.5;              // extrusion depth, in grid units
+  const D = 0;
   const S = N + D;
   const at = function(x, y){
     if (y < 0 || y >= N || x < 0 || x >= N) return null;
@@ -901,7 +886,104 @@ function buildChar(cfg){
 }
 
 /* =====================================================================
-   One renderer, one scene, two scissor viewports pinned to DOM slots
+   Icons as real geometry
+   Each filled pixel of a grid becomes an actual chamfered cube. The cubes
+   of one colour are merged into a single BufferGeometry so a badge costs
+   one or two draw calls instead of thirty.
+   ===================================================================== */
+const ICON_CUBE   = 1.14;                 // >1 so cubes on the 1-unit lattice overlap
+const ICON_CUBE_D = 1.9;                  // depth: a slab, not a plate
+
+function mergeCubes(offsets){
+  const base = chamferBox(ICON_CUBE, ICON_CUBE, ICON_CUBE_D);
+  const bp = base.attributes.position.array;
+  const bn = base.attributes.normal.array;
+  const n = bp.length;
+  const pos = new Float32Array(n * offsets.length);
+  const nor = new Float32Array(n * offsets.length);
+  offsets.forEach(function(o, i){
+    const at = i * n;
+    for (let k=0; k<n; k+=3){
+      pos[at + k]     = bp[k]     + o[0];
+      pos[at + k + 1] = bp[k + 1] + o[1];
+      pos[at + k + 2] = bp[k + 2];
+    }
+    nor.set(bn, at);
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal',   new THREE.Float32BufferAttribute(nor, 3));
+  return g;
+}
+
+const iconMats = {};
+function iconMat(hex){
+  if (!iconMats[hex]){
+    iconMats[hex] = new THREE.MeshPhongMaterial({
+      color: hex, specular: 0x5d6b5f, shininess: 30
+    });
+  }
+  return iconMats[hex];
+}
+
+const iconGroups = {};
+function iconGroup(name){
+  if (iconGroups[name]) return iconGroups[name].clone();
+  const d = ICONS[name], byColour = {};
+  d.g.forEach(function(row, y){
+    for (let x=0; x<row.length; x++){
+      const c = row[x];
+      if (c === '.') continue;
+      const hex = d.p[+c - 1];
+      if (hex === 'C') continue;          // chrome marks are not baked
+      (byColour[hex] = byColour[hex] || []).push([x - 3.5, 3.5 - y]);
+    }
+  });
+  const g = new THREE.Group();
+  Object.keys(byColour).forEach(function(hex){
+    g.add(new THREE.Mesh(mergeCubes(byColour[hex]), iconMat(hex)));
+  });
+  iconGroups[name] = g;
+  return g.clone();
+}
+
+/* Render each pictorial icon once, off-screen, at a three-quarter angle, and
+   keep the PNG. Live 3D per list icon would mean a render pass and a bounding
+   rect for every one of them, every frame, inside scrolling cards -- so the
+   list icons are real 3D renders held still, and only the badges beside the
+   avatar are live. */
+const BAKED = ['masjid','panah','renang','kuda','kitab','bola',
+               'bulan','tasbih','bantu','lari','tembak'];
+
+function bakeIcons(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 192;
+  const r = new THREE.WebGLRenderer({canvas:c, antialias:true, alpha:true,
+                                     preserveDrawingBuffer:true});
+  r.setClearColor(0x000000, 0);
+  const sc = new THREE.Scene();
+  sc.add(new THREE.AmbientLight(0x3a443c, 0.75));
+  sc.add(new THREE.HemisphereLight(0x5a8a6c, 0x0b1a10, 0.45));
+  const k = new THREE.DirectionalLight(0xfff4e4, 0.95); k.position.set(-30,44,58); sc.add(k);
+  const r1 = new THREE.DirectionalLight(0x86ffa4, 0.32); r1.position.set(40,22,-46); sc.add(r1);
+  const r2 = new THREE.DirectionalLight(0xffd7a8, 0.24); r2.position.set(-44,18,-40); sc.add(r2);
+  const cam = new THREE.OrthographicCamera(-5.9, 5.9, 5.9, -5.9, 0.1, 200);
+  cam.position.set(0, 0, 60);
+  cam.lookAt(0, 0, 0);
+
+  BAKED.forEach(function(name){
+    const g = iconGroup(name);
+    g.rotation.set(0.20, -0.52, 0);
+    sc.add(g);
+    r.render(sc, cam);
+    ICON_IMG[name] = c.toDataURL('image/png');
+    sc.remove(g);
+  });
+  r.dispose();
+}
+
+/* =====================================================================
+   One renderer, one scene, scissor viewports pinned to DOM slots
    ===================================================================== */
 const canvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, alpha:true});
@@ -963,6 +1045,7 @@ SLOTS.forEach(function(s){
 });
 
 const clock = new THREE.Clock();
+const proj = new THREE.Vector3();
 function frame(){
   requestAnimationFrame(frame);
   const t = clock.getElapsedTime();
@@ -992,6 +1075,14 @@ function frame(){
     });
   }
 
+  /* Badges bob and swing rather than spin: a full turn would take each slab
+     edge-on twice a lap, where it all but disappears. */
+  floatBadges.forEach(function(b){
+    b.obj.position.y = b.base + Math.sin(t*0.9 + b.phase) * 1.1;
+    b.obj.rotation.y = 0.28 + Math.sin(t*0.55 + b.phase) * 0.55;
+    b.obj.rotation.x = Math.sin(t*0.7 + b.phase) * 0.1;
+  });
+
   renderer.setScissorTest(false);
   renderer.setViewport(0, 0, W, H);
   renderer.clear();                       // whole canvas back to transparent
@@ -1007,7 +1098,23 @@ function frame(){
     renderer.setScissor(x, y, w, h);
     s.cam.aspect = w / h;
     s.cam.updateProjectionMatrix();
+
+    // the badges belong beside the full figure, not in the chest crop
+    const showBadges = s.id === 'slot-avatar';
+    floatBadges.forEach(function(b){ b.obj.visible = showBadges; });
+
     renderer.render(scene, s.cam);
+
+    if (showBadges){
+      floatBadges.forEach(function(b){
+        // project the badge's underside, not its centre: the label has to
+        // clear whatever the badge's on-screen height happens to be
+        proj.set(b.obj.position.x, b.obj.position.y - 3.9, b.obj.position.z)
+            .project(s.cam);
+        b.el.style.left = ((proj.x * 0.5 + 0.5) * w).toFixed(1) + 'px';
+        b.el.style.top  = ((-proj.y * 0.5 + 0.5) * h).toFixed(1) + 'px';
+      });
+    }
   });
   renderer.setScissorTest(false);
 }
@@ -1065,27 +1172,39 @@ function renderBadges(){
   renderFloatBadges();
 }
 
-/* Slots down both sides of the avatar, staggered so no two chips sit level
-   with each other and none lands on the figure in the middle. */
+/* Badges orbiting the avatar, as real objects in its scene. Positions are
+   world coordinates beside the figure, staggered down both sides and clear of
+   it; the name rides along as a DOM label placed each frame by projecting the
+   object's world position through the slot's camera. */
 const FLOAT_POS = [
-  {side:'l', top:'11%'}, {side:'r', top:'19%'},
-  {side:'l', top:'41%'}, {side:'r', top:'49%'},
-  {side:'l', top:'68%'}, {side:'r', top:'74%'}
+  [-13.5, 28, 4], [13.5, 24, 4],
+  [-14.0, 17, 4], [14.0, 12, 4],
+  [-13.0,  7, 4], [13.0,  3, 4]
 ];
+const floatBadges = [];
+
 function renderFloatBadges(){
   const host = el('slot-avatar');
   host.querySelectorAll('.fb').forEach(function(n){ n.remove(); });
+  floatBadges.forEach(function(b){ scene.remove(b.obj); });
+  floatBadges.length = 0;
+
   BADGES.filter(function(b){ return b.on; })
         .slice(0, FLOAT_POS.length)
         .forEach(function(b, i){
     const p = FLOAT_POS[i];
-    const d = document.createElement('div');
-    d.className = 'fb fb-' + p.side;
-    d.style.top = p.top;
-    d.style.animationDelay = (i * 0.45).toFixed(2) + 's';
-    d.setAttribute('aria-hidden', 'true');   // the badge grid below is the real list
-    d.innerHTML = vi(b.ic) + '<span>' + b.nm + '</span>';
-    host.appendChild(d);
+    const obj = iconGroup(b.ic);
+    obj.scale.setScalar(0.85);
+    obj.position.set(p[0], p[1], p[2]);
+    scene.add(obj);
+
+    const lab = document.createElement('div');
+    lab.className = 'fb';
+    lab.textContent = b.nm;
+    lab.setAttribute('aria-hidden', 'true');   // the badge grid below is the real list
+    host.appendChild(lab);
+
+    floatBadges.push({obj:obj, el:lab, base:p[1], phase:i * 0.7});
   });
 }
 
@@ -1238,11 +1357,13 @@ function go(id){
   el('body').scrollTop = 0;
 }
 
+bakeIcons();
 setRank(state.rank);
 renderBadges(); renderMeters(); renderAmal(); renderRek(); renderMuh(); renderTabs();
 frame();
 
 window.NUSUKI_APP = {state:state, scene:scene, renderer:renderer, go:go, setRank:setRank};
+window.ICON_IMG = ICON_IMG;
 </script>
 </body>
 </html>

@@ -54,19 +54,32 @@ rank advances and the avatar is rebuilt as the next rank — the app's premise i
 that the avatar reflects real deeds, so the mockup demonstrates that loop
 rather than describing it.
 
-Every glyph is an 8×8 pixel grid, not an emoji: emoji are round, glossy and
-come from the system font, which reads as a different concept next to the
-voxels. `vi()` **extrudes** each grid into voxels — every filled pixel becomes
-a cube, and a cube draws its top face only where nothing sits above it and its
-side face only where nothing sits to its right, so depth appears along the
-silhouette exactly as on a real voxel sprite. Front faces are painted last
-because they are the nearest plane. Face brightness reuses the 3D renderer's
-split (top lifted ×1.22, side dropped ×0.7); `'C'` in a grid's palette paints
-with `currentColor` and varies opacity instead, which is how the tab icons pick
-up their active state without a second set of files.
+Every glyph starts as an 8×8 pixel grid, not an emoji: emoji are round, glossy
+and come from the system font, which reads as a different concept next to the
+voxels. The grids are then built as **real geometry** — each filled pixel
+becomes a chamfered cube, the same `chamferBox` the characters are made of,
+with the cubes of one colour merged into a single `BufferGeometry` so a badge
+costs one or two draw calls instead of thirty. Cubes are cut slightly larger
+than the 1-unit lattice they sit on, so neighbours overlap; at list size a
+chamfer gap between every cube fragmented each shape into loose dots.
 
-Chrome small enough that extrusion would turn to mush — tab marks, mood faces,
-the tick — passes `flat` and stays 2D.
+Where that geometry is *live* versus *baked* is a deliberate split:
+
+- **Badges beside the avatar are live 3D**, added straight into the avatar's
+  own scene. They cost no extra render pass, are lit by the same rig, and bob
+  and swing as real objects. They swing rather than spin because a full turn
+  would take each slab edge-on twice a lap, where it all but disappears. Their
+  names ride along as DOM labels, positioned each frame by projecting a point
+  just under each badge through the slot's camera — the underside rather than
+  the centre, so a label clears whatever on-screen height the badge happens to
+  have.
+- **List icons are the same geometry rendered once and kept as a PNG**, baked
+  off-screen at startup at a three-quarter angle. Live 3D per list icon would
+  mean a render pass and a `getBoundingClientRect` for each of them every
+  frame, inside cards that scroll.
+- **Chrome marks stay flat vector** — tab marks, mood faces, the tick. They use
+  `currentColor` to pick up their active state, which a baked PNG cannot do,
+  and at 11–15px a 3D render is mush anyway.
 
 **One bug worth remembering.** `setSize(w, h, false)` skips writing
 `canvas.style.width/height`. A canvas is a *replaced* element, so with
